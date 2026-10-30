@@ -1,14 +1,20 @@
-<!-- LOVABLE:BEGIN -->
-> [!IMPORTANT]
-> This project is connected to [Lovable](https://lovable.dev). Avoid rewriting
-> published git history — force pushing, or rebasing/amending/squashing commits
-> that are already pushed — as it rewrites history on Lovable's side and the
-> user will likely lose their project history.
->
-> Commits you push to the connected branch sync back to Lovable and show up in
-> the editor, so keep the branch in a working state.
-<!-- LOVABLE:END -->
 
-- Imported SCADA screens use a shared shell and React-managed demonstration state; keep simulated commands distinct from real plant connections.
-- Map imported HTML colors to semantic global CSS tokens so the supplied appearance remains theme-managed.
-- PAC projections come from a single pure, tested illustrative model; do not present its outputs as engineering validation or measured plant savings.
+# Project Instructions
+
+## General workflow
+- Inspect existing code before proposing changes.
+- Explain which files need to change and why.
+- Preserve the existing architecture unless a change is necessary.
+- Do not modify unrelated files.
+- Do not invent APIs, database fields, or project requirements.
+
+## Code quality
+- Follow the existing coding style and naming conventions.
+- Reuse existing components and utilities when appropriate.
+- Explain any new dependencies before adding them.
+- Run relevant checks after making changes, when possible.
+
+## Safety
+- Do not expose secrets or environment variables.
+- Do not modify production configuration.
+- Explain potentially destructive commands before executing them.

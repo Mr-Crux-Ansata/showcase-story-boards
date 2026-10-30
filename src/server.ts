@@ -2,6 +2,11 @@ import "./lib/error-capture";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
+import { handleEdgeTelemetryRequest } from "./server/api/edge-telemetry";
+import { handleTelemetryStreamRequest } from "./server/api/telemetry-stream";
+import { handleAiOptimizeRequest, handleAiApproveRequest, handleAiExpireRequest } from "./server/api/ai-optimize";
+import { handleOperationsApi } from "./server/api/operations";
+import { handleSimulatorControlRequest } from "./server/api/simulator-control";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -47,6 +52,37 @@ function isH3SwallowedErrorBody(body: string): boolean {
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
+      const url = new URL(request.url);
+
+      // 1. Endpoint de ingesta de telemetría desde Gateway Edge
+      if (url.pathname === "/api/edge/telemetry") {
+        return await handleEdgeTelemetryRequest(request);
+      }
+
+      // 2. Endpoint de streaming en tiempo real (Server-Sent Events) para la UI
+      if (url.pathname === "/api/telemetry/stream") {
+        return handleTelemetryStreamRequest(request);
+      }
+
+      // 3. Endpoints del Motor de Inferencia y Recomendaciones IA
+      if (url.pathname === "/api/ai/optimize") {
+        return await handleAiOptimizeRequest(request);
+      }
+
+      if (url.pathname === "/api/ai/recommendations/approve") {
+        return await handleAiApproveRequest(request);
+      }
+      if (url.pathname === "/api/ai/recommendations/expire") {
+        return await handleAiExpireRequest(request);
+      }
+      if (url.pathname === "/api/simulator/pac-setpoint") {
+        return await handleSimulatorControlRequest(request);
+      }
+
+      const operationsResponse = await handleOperationsApi(request);
+      if (operationsResponse) return operationsResponse;
+
+      // 4. Flujo normal de renderizado SSR con TanStack Start
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
       return await normalizeCatastrophicSsrResponse(response);

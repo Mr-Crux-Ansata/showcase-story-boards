@@ -2,12 +2,13 @@ import { useSyncExternalStore } from "react";
 
 /** In-memory demonstration state shared across screens. Resets on page reload. */
 export type AlertStatus = "abierta" | "pausada" | "resuelta";
+export type ShiftCode = "A" | "B" | "C";
 export type DemoAlert = { id: string; title: string; status: AlertStatus };
 export type LogEntry = { id: number; time: string; kind: "consigna" | "alerta" | "datos" | "turno" | "sistema"; title: string; detail: string };
 
 export type DemoState = {
   plant: string;
-  shift: string;
+  shift: ShiftCode;
   alerts: DemoAlert[];
   log: LogEntry[];
   approvedDose: number | null;
@@ -74,7 +75,7 @@ export const demo = {
     };
   },
   setPlant(plant: string) { set({ ...state, plant }); demo.log("sistema", `Planta seleccionada: ${plant}`, "Cambio de vista en la demostración."); },
-  setShift(shift: string) { set({ ...state, shift }); },
+  setShift(shift: ShiftCode) { set({ ...state, shift }); },
   signShift() { set({ ...state, shiftSigned: true }); demo.log("turno", `Cierre de Turno ${state.shift} firmado`, "Firma simulada; no tiene validez legal."); },
 };
 
