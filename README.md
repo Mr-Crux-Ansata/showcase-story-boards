@@ -1,47 +1,48 @@
 # AquaSense AI
 
-Aplicación web SCADA de demostración para telemetría, alertas, bitácora, cierres de turno e inferencias PAC. El gateway incluido es un simulador; no existe una integración con PLC, OPC-UA o Modbus.
+AquaSense AI es una aplicación web de demostración SCADA para plantas de tratamiento de agua. Reúne telemetría, alertas, recomendaciones de dosificación PAC, bitácora operativa, cierres de turno e importación histórica desde CSV. El sistema distingue las lecturas simuladas de los datos persistidos y no presenta proyecciones como mediciones reales.
 
-## Arquitectura
+## Alcance y flujo operativo
 
-- `src/routes/` define las páginas con TanStack Router y Start.
-- `src/components/screens/` contiene las cinco vistas operativas: Costos, Alertas, Recomendaciones, Bitácora y Carga CSV.
-- `src/server.ts` monta los endpoints JSON y delega el resto del tráfico al servidor SSR.
-- `src/server/api/` valida solicitudes y coordina persistencia, optimización y el gateway simulado.
-- `src/server/db/` administra el pool de `mssql` y consultas SQL Server parametrizadas.
-- `database/` contiene el aprovisionamiento, esquema y datos semilla.
-- `scripts/edge-gateway-simulator.ts` genera paquetes de prueba y consulta el setpoint PAC aprobado.
+1. El simulador de gateway genera snapshots de proceso y consulta a la API la consigna PAC activa. Envía los paquetes con una clave compartida.
+2. La API valida el payload, calcula indicadores de calidad, guarda el snapshot en SQL Server y publica la lectura por SSE para la interfaz. Si SQL Server no está disponible, la telemetría puede verse temporalmente en vivo, pero no se marca como persistida.
+3. El modelo surrogate ejecutado en el servidor calcula una recomendación con las condiciones de proceso disponibles. La persona operadora puede registrarla como aprobada o rechazada; el gateway simulado consulta la última dosis aprobada en sus ciclos siguientes.
+4. Alertas, bitácora y cierres de turno se consultan o guardan en SQL Server. La importación CSV acepta snapshots completos y los inserta dentro de una transacción.
 
-El optimizador surrogate corre en el servidor. La confirmación humana se guarda en `AiRecommendations` y `OperationsLog`; el simulador lee la última dosis aprobada y la refleja en sus paquetes siguientes. Esto no representa una escritura ni un ACK de PLC.
+## Componentes
 
-## Requisitos y ejecución local
+- `src/routes/`: páginas y metadatos de Costos, Alertas, Recomendaciones, Bitácora y Carga CSV.
+- `src/components/screens/`: vistas operativas y componentes de cada pantalla.
+- `src/hooks/` y `src/lib/`: acceso a API, estado de planta/turno, validación de CSV y dosis, tipos y utilidades.
+- `src/server/api/`: endpoints de telemetría, streaming, optimización, decisiones operativas y CSV.
+- `src/server/ai/`: modelo surrogate de calidad y ahorro PAC; no llama a un proveedor de IA externo.
+- `src/server/db/`: conexión `mssql`, repositorios SQL parametrizados y diagnóstico de errores.
+- `database/`: scripts SQL Server para base, esquema y datos semilla.
+- `scripts/edge-gateway-simulator.ts`: simulador de gateway industrial.
 
-Usa Node.js 22.12 o posterior y npm.
+## Integraciones y límites
+
+La persistencia externa usa Microsoft SQL Server. La interfaz también descarga fuentes tipográficas e iconos de Google Fonts/Material Symbols. No hay conexión con PLC, OPC-UA, Modbus, servicios cloud de IA ni sistemas externos de alertas: los valores del gateway y la aplicación de setpoints son simulados. Una aprobación no es un comando ni un ACK de equipo real.
+
+## Instalación y ejecución local
+
+Requiere Node.js 22.12 o posterior y npm. Desde la raíz del repositorio:
 
 ```powershell
 npm ci
-Copy-Item .env.example .env
+if (!(Test-Path .env)) { Copy-Item .env.example .env }
 ```
 
-Completa `.env` localmente. Para persistencia SQL configura `DB_SERVER`, `DB_PORT`, `DB_NAME`, `DB_USER` y `DB_PASSWORD`. Para usar el simulador, define además `EDGE_GATEWAY_KEY` y `PAC_INITIAL_SETPOINT`; configura `OPERATOR_NAME` y `OPERATOR_ROLE` para registrar decisiones y entregas.
+Configura `.env` localmente. Para SQL Server define `DB_SERVER`, `DB_PORT`, `DB_NAME=AquaSenseSCADA`, `DB_USER` y `DB_PASSWORD`. Inicializa la base con los pasos de [database/README.md](database/README.md). Para el simulador configura `EDGE_GATEWAY_KEY` (mínimo 32 caracteres), `PAC_INITIAL_SETPOINT` (5–50 ppm) y `TARGET_URL` con el host y puerto que muestre Vite. `OPERATOR_NAME` y `OPERATOR_ROLE` habilitan el registro de decisiones y cierres.
 
-Inicializa SQL Server siguiendo [database/README.md](database/README.md), luego arranca la aplicación:
+Inicia el servidor y, en otra terminal, el gateway:
 
 ```powershell
 npm run dev
+npm run gateway
 ```
 
-En otra terminal ejecuta el gateway simulado:
-
-```powershell
-npm run gateway:simulate
-```
-
-La persistencia no está disponible sin credenciales válidas y SQL Server accesible. El flujo en memoria se limita a telemetría en vivo para desarrollo; las APIs de consulta y escritura persistente responden con error de servicio en lugar de fingir guardado.
-
-## CSV
-
-La importación acepta filas que representan snapshots completos de `TelemetrySnapshots`. Descarga la plantilla desde Carga CSV y proporciona los campos obligatorios de afluente, dosis y efluente. Las filas válidas se insertan en una transacción; las inválidas se reportan con su número de fila. No se inventan valores para convertir lecturas aisladas en snapshots.
+Sin conexión SQL, solo la vista de telemetría en vivo puede usar almacenamiento temporal; las consultas y acciones persistentes informan el error y no simulan guardados.
 
 ## Comprobaciones
 
