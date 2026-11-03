@@ -10,6 +10,9 @@
 const TARGET_URL = process.env["TARGET_URL"] || "http://localhost:3000/api/edge/telemetry";
 const GATEWAY_KEY = process.env["EDGE_GATEWAY_KEY"];
 const PLANT_CODE = process.env["PLANT_CODE"] || "PL_NORTE";
+const SIMULATION_PROFILE = process.env["SIMULATION_PROFILE"] || "demo";
+if (!["demo", "stable"].includes(SIMULATION_PROFILE))
+  throw new Error("SIMULATION_PROFILE must be either 'demo' or 'stable'.");
 if (!GATEWAY_KEY)
   throw new Error("EDGE_GATEWAY_KEY must be configured before starting the simulator.");
 if (GATEWAY_KEY.length < 32)
@@ -35,6 +38,9 @@ let lastSetpointSource: string | undefined;
 
 console.info(`[Gateway] Setpoint API: ${CONTROL_URL}`);
 console.info(`[Gateway] Plant: ${PLANT_CODE}; gateway key is configured (value hidden).`);
+console.info(
+  `[Gateway] Simulation profile: ${SIMULATION_PROFILE}${SIMULATION_PROFILE === "demo" ? "; synthetic quality excursion every 12 cycles" : "; quality excursions disabled"}.`,
+);
 console.info(
   "[Gateway] SQL connection is managed by the web API; inspect its terminal for SQL diagnostics.",
 );
@@ -128,8 +134,14 @@ async function sendTelemetryPacket() {
 
   const pacPumpFrequencyHz = Number(((pacDosePpm / 32) * 50).toFixed(1));
 
-  const effluentTurbidityNtu = Number((inflowTurbidityNtu * 0.88).toFixed(2));
-  const effluentDqoMgL = Number((inflowDqoMgL * 0.91).toFixed(2));
+  // Demo profile adds a periodic quality excursion so the dashboard can show both states.
+  const isQualityExcursion = SIMULATION_PROFILE === "demo" && cycle % 12 === 0;
+  const effluentTurbidityNtu = isQualityExcursion
+    ? randomVariation(4.8, 8)
+    : Number((inflowTurbidityNtu * 0.88).toFixed(2));
+  const effluentDqoMgL = isQualityExcursion
+    ? randomVariation(63, 6)
+    : Number((inflowDqoMgL * 0.91).toFixed(2));
 
   const payload = {
     plantCode: PLANT_CODE,
@@ -171,7 +183,7 @@ async function sendTelemetryPacket() {
         ? `SQL snapshot ${result.snapshotId ?? "saved"}`
         : "temporary memory only; not persisted";
       console.log(
-        `[${timeStr}] Ciclo #${cycle} SIMULACIÓN transmitida | Caudal: ${inflowRateM3h} m³/h | Turb: ${inflowTurbidityNtu} NTU | PAC simulado: ${pacDosePpm} ppm | ${persistence} | PLC ACK: none`,
+        `[${timeStr}] Ciclo #${cycle} SIMULACIÓN transmitida | ${isQualityExcursion ? "EXCURSIÓN DE CALIDAD SIMULADA" : "calidad simulada estable"} | Caudal: ${inflowRateM3h} m³/h | Turbidez efluente: ${effluentTurbidityNtu} NTU | DQO efluente: ${effluentDqoMgL} mg/L | PAC simulado: ${pacDosePpm} ppm | ${persistence} | PLC ACK: none`,
       );
     } else {
       const errText = await res.text();

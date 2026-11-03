@@ -50,7 +50,9 @@ export function RecomendacionesScreen() {
   const history = useApiData<Page<RecommendationRecord>>(listUrl, refresh);
   const pending = history.data?.data.find((record) => record.status === "PENDIENTE") ?? null;
 
-  const recommendationId = generated?.recommendationId ?? pending?.recommendationId ?? null;
+  const recommendationId = generated
+    ? generated.recommendationId
+    : (pending?.recommendationId ?? null);
   const dose = generated?.result.recommendedDosePpm ?? pending?.recommendedValue ?? null;
   const currentDose =
     generated?.result.currentDosePpm ?? pending?.currentValue ?? liveTelemetry?.pacDosePpm ?? null;
@@ -61,7 +63,7 @@ export function RecomendacionesScreen() {
     generated?.result.prediction.monthlySavingUsd ?? pending?.monthlySavingUsd ?? null;
   const compliant =
     generated?.result.prediction.nom001Compliant ?? pending?.projectedNom001Compliant ?? null;
-  const status = generated?.persisted ? "PENDIENTE" : (pending?.status ?? null);
+  const status = generated ? (generated.persisted ? "PENDIENTE" : null) : (pending?.status ?? null);
   const doseCheck =
     dose === null
       ? { ok: false as const, reason: "No hay dosis para evaluar." }
@@ -296,8 +298,14 @@ export function RecomendacionesScreen() {
                 </div>
                 {!doseCheck.ok && dose !== null && (
                   <p className="text-sm text-destructive">
-                    {doseCheck.reason} La dosis debe estar entre {SAFE_DOSE_MIN}–{SAFE_DOSE_MAX}{" "}
-                    ppm.
+                    {doseCheck.reason}
+                    {(dose < SAFE_DOSE_MIN || dose > SAFE_DOSE_MAX) && (
+                      <>
+                        {" "}
+                        Calcula de nuevo para obtener una recomendación dentro de {SAFE_DOSE_MIN}–
+                        {SAFE_DOSE_MAX} ppm.
+                      </>
+                    )}
                   </p>
                 )}
                 {generated && !generated.persisted && (

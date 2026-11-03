@@ -224,5 +224,28 @@ BEGIN
 END
 GO
 
+-- ----------------------------------------------------------------------------
+-- 8. Costos operativos mensuales registrados por planta
+-- ----------------------------------------------------------------------------
+IF OBJECT_ID(N'dbo.OperationalCostRecords', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.OperationalCostRecords (
+        OperationalCostId BIGINT IDENTITY(1,1) PRIMARY KEY,
+        PlantId INT NOT NULL REFERENCES dbo.Plants(PlantId),
+        PeriodStart DATE NOT NULL,
+        EnergyCostUsd DECIMAL(14,2) NOT NULL CHECK (EnergyCostUsd >= 0),
+        SludgeCostUsd DECIMAL(14,2) NOT NULL CHECK (SludgeCostUsd >= 0),
+        MembraneCostUsd DECIMAL(14,2) NOT NULL CHECK (MembraneCostUsd >= 0),
+        SourceNote NVARCHAR(500) NULL,
+        RecordedBy NVARCHAR(100) NOT NULL,
+        RecordedByRole NVARCHAR(100) NOT NULL,
+        RecordedAt DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
+        UpdatedAt DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
+        CONSTRAINT UQ_OperationalCostRecords_Plant_Period UNIQUE (PlantId, PeriodStart)
+    );
+
+END
+GO
+
 PRINT 'Esquema de base de datos AquaSenseSCADA generado correctamente.';
 GO

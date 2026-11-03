@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { aiEngine } from "@/server/ai/surrogate-model";
 import type { InflowConditions } from "@/lib/types/telemetry";
+import { SAFE_DOSE_MAX, SAFE_DOSE_MIN } from "@/lib/dose-validation";
 
 const sample: InflowConditions = {
   inflowRateM3h: 142.8,
@@ -13,6 +14,8 @@ const sample: InflowConditions = {
 describe("surrogate recommendation contract", () => {
   it("uses the prediction at the recommended dose as its source of truth", () => {
     const result = aiEngine.optimize(sample);
+    expect(result.recommendedDosePpm).toBeGreaterThanOrEqual(SAFE_DOSE_MIN);
+    expect(result.recommendedDosePpm).toBeLessThanOrEqual(SAFE_DOSE_MAX);
     expect(result.prediction).toEqual(aiEngine.predictQuality(sample, result.recommendedDosePpm));
     expect(
       result.doseSensitivityCurve.filter((point) => point.isOptimal).map((point) => point.dosePpm),

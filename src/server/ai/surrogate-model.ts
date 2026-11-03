@@ -1,20 +1,25 @@
 /**
  * AquaSense AI - Motor de Inferencia y Gemelo Digital de Coagulación (Surrogate Model)
- * 
+ *
  * Modela la cinética fisicoquímica de remoción de turbidez y materia orgánica (DQO)
  * calibrado a partir de ensayos de jarras (Jar Tests) e histórico de reactor MBR.
  * Implementa un optimizador restringido que minimiza costo sujeto a NOM-001.
  */
 
-import type { InflowConditions, QualityPrediction, OptimizationResult } from "../../lib/types/telemetry";
+import type {
+  InflowConditions,
+  QualityPrediction,
+  OptimizationResult,
+} from "../../lib/types/telemetry";
+import { SAFE_DOSE_MAX, SAFE_DOSE_MIN } from "../../lib/dose-validation";
 
 export type { InflowConditions, QualityPrediction, OptimizationResult };
 
 // Parámetros cinéticos del coagulante PAC en matriz industrial
 const BASE_PAC_PRICE_PER_KG = 0.52; // USD / kg de PAC líquido comercial
 const REFERENCE_DOSE_PPM = 28.0;
-const NOM_TURBIDITY_LIMIT = 4.0;    // NTU según NOM-001
-const NOM_DQO_LIMIT = 60.0;         // mg/L según NOM-001
+const NOM_TURBIDITY_LIMIT = 4.0; // NTU según NOM-001
+const NOM_DQO_LIMIT = 60.0; // mg/L según NOM-001
 
 export class CoagulationAiEngine {
   private static instance: CoagulationAiEngine;
@@ -43,7 +48,7 @@ export class CoagulationAiEngine {
 
     // Cinética de remoción de turbidez (con dosis óptima alrededor de 18-21 ppm)
     // Subdosificación: turbidez residual alta. Sobredosificación: resuspensión por inversión de carga
-    const stoichiometricDose = 14 + (rawTurb * 0.08) + (rawDqo * 0.05);
+    const stoichiometricDose = 14 + rawTurb * 0.08 + rawDqo * 0.05;
     const doseRatio = dose / Math.max(10, stoichiometricDose);
 
     let turbidityRemovalEfficiency = 0.94 * phEfficiencyFactor;
@@ -57,15 +62,13 @@ export class CoagulationAiEngine {
 
     const predictedTurbidity = Math.max(
       0.8,
-      Number((rawTurb * (1 - turbidityRemovalEfficiency)).toFixed(2))
+      Number((rawTurb * (1 - turbidityRemovalEfficiency)).toFixed(2)),
     );
 
     // Cinética de coagulación de coloides orgánicos (DQO)
-    const organicRemovalEfficiency = 0.38 * phEfficiencyFactor * Math.min(1.1, Math.pow(dose / 20, 0.45));
-    const predictedDqo = Math.max(
-      32,
-      Number((rawDqo * (1 - organicRemovalEfficiency)).toFixed(1))
-    );
+    const organicRemovalEfficiency =
+      0.38 * phEfficiencyFactor * Math.min(1.1, Math.pow(dose / 20, 0.45));
+    const predictedDqo = Math.max(32, Number((rawDqo * (1 - organicRemovalEfficiency)).toFixed(1)));
 
     // Cálculos económicos de reactivo químico
     // PAC dosis en ppm = g/m3. Consumo en kg/m3 = ppm / 1000
@@ -79,7 +82,8 @@ export class CoagulationAiEngine {
     const monthlyVolumeM3 = flow * 720;
     const monthlySavingUsd = Math.round(monthlyVolumeM3 * unitSavingUsd);
 
-    const nom001Compliant = predictedTurbidity < NOM_TURBIDITY_LIMIT && predictedDqo < NOM_DQO_LIMIT;
+    const nom001Compliant =
+      predictedTurbidity < NOM_TURBIDITY_LIMIT && predictedDqo < NOM_DQO_LIMIT;
 
     return {
       turbidityNtu: predictedTurbidity,
@@ -88,7 +92,9 @@ export class CoagulationAiEngine {
       unitSavingUsd,
       monthlySavingUsd,
       nom001Compliant,
-      turbidityMarginPct: Number((((NOM_TURBIDITY_LIMIT - predictedTurbidity) / NOM_TURBIDITY_LIMIT) * 100).toFixed(1)),
+      turbidityMarginPct: Number(
+        (((NOM_TURBIDITY_LIMIT - predictedTurbidity) / NOM_TURBIDITY_LIMIT) * 100).toFixed(1),
+      ),
       dqoMarginPct: Number((((NOM_DQO_LIMIT - predictedDqo) / NOM_DQO_LIMIT) * 100).toFixed(1)),
     };
   }
@@ -104,15 +110,16 @@ export class CoagulationAiEngine {
     let minCost = Infinity;
     let bestPrediction = refPrediction;
 
-    // Barrido paramétrico en el rango seguro estándar (15 a 30 ppm)
+    // Evaluar únicamente dosis que también permite aprobar la aplicación.
     const curve: OptimizationResult["doseSensitivityCurve"] = [];
 
-    for (let testDose = 15; testDose <= 32; testDose += 1) {
+    for (let testDose = SAFE_DOSE_MIN; testDose <= SAFE_DOSE_MAX; testDose += 1) {
       const pred = this.predictQuality(inflow, testDose);
-      
+
       // La dosis es válida solo si cumple estrictamente la NOM-001 con al menos 15% de margen
-      const isCompliant = pred.nom001Compliant && pred.turbidityMarginPct >= 15 && pred.dqoMarginPct >= 10;
-      
+      const isCompliant =
+        pred.nom001Compliant && pred.turbidityMarginPct >= 15 && pred.dqoMarginPct >= 10;
+
       if (isCompliant && pred.unitCostUsd < minCost) {
         minCost = pred.unitCostUsd;
         bestDose = testDose;
@@ -164,8 +171,8 @@ export class CoagulationAiEngine {
       reasoning,
       doseSensitivityCurve: curve,
       safetySafeguards: {
-        safeRangeMin: 18,
-        safeRangeMax: 22,
+        safeRangeMin: SAFE_DOSE_MIN,
+        safeRangeMax: SAFE_DOSE_MAX,
         outOfDistributionWarning: isOOD,
       },
     };

@@ -70,6 +70,18 @@ export type HandoverRecord = {
   signatureHashSha256: string;
   status: string;
 };
+export type OperationalCostRecord = {
+  operationalCostId: number;
+  plantCode: string;
+  periodStart: string;
+  energyCostUsd: number;
+  sludgeCostUsd: number;
+  membraneCostUsd: number;
+  sourceNote: string | null;
+  recordedBy: string;
+  recordedByRole: string;
+  updatedAt: string;
+};
 
 export class ApiError extends Error {
   constructor(

@@ -12,6 +12,7 @@ import {
 import { DatabaseUnavailableError } from "../db/errors";
 import { isSameOriginRequest, operationalIdentity } from "./request-security";
 import { logServerError } from "../logging";
+import { listOperationalCosts, saveOperationalCost } from "../db/costs-repository";
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -78,6 +79,17 @@ const AlertCreateSchema = z
   })
   .strict();
 
+const OperationalCostSchema = z
+  .object({
+    plantCode: z.string().min(1).max(50),
+    period: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
+    energyCostUsd: z.number().finite().min(0).max(999999999999.99),
+    sludgeCostUsd: z.number().finite().min(0).max(999999999999.99),
+    membraneCostUsd: z.number().finite().min(0).max(999999999999.99),
+    sourceNote: z.string().trim().max(500).nullable().optional(),
+  })
+  .strict();
+
 function pagination(url: URL) {
   const limit = Number(url.searchParams.get("limit") ?? 50);
   const offset = Number(url.searchParams.get("offset") ?? 0);
@@ -122,6 +134,7 @@ export async function handleOperationsApi(request: Request): Promise<Response | 
         "/api/alerts",
         "/api/operations-log",
         "/api/shift-handovers",
+        "/api/operational-costs",
         "/api/ai/recommendations",
       ].includes(path)
     ) {
@@ -133,7 +146,10 @@ export async function handleOperationsApi(request: Request): Promise<Response | 
           );
         const parsed = AlertCreateSchema.safeParse(await parseJson(request));
         if (!parsed.success)
-          return json({ error: "Revisa los datos de la alerta.", details: parsed.error.flatten() }, 400);
+          return json(
+            { error: "Revisa los datos de la alerta.", details: parsed.error.flatten() },
+            400,
+          );
         const identity = operationalIdentity();
         if (!identity)
           return json(
@@ -155,7 +171,10 @@ export async function handleOperationsApi(request: Request): Promise<Response | 
           );
         const parsed = HandoverSchema.safeParse(await parseJson(request));
         if (!parsed.success)
-          return json({ error: "Revisa los datos del cierre de turno.", details: parsed.error.flatten() }, 400);
+          return json(
+            { error: "Revisa los datos del cierre de turno.", details: parsed.error.flatten() },
+            400,
+          );
         const identity = operationalIdentity();
         if (!identity)
           return json(
@@ -169,6 +188,26 @@ export async function handleOperationsApi(request: Request): Promise<Response | 
         });
         return json({ ok: true, handover: result }, 201);
       }
+      if (path === "/api/operational-costs" && request.method === "POST") {
+        if (!isSameOriginRequest(request))
+          return json({ error: "La solicitud debe provenir de esta aplicación." }, 403);
+        const parsed = OperationalCostSchema.safeParse(await parseJson(request));
+        if (!parsed.success)
+          return json({ error: "Revisa el periodo y los importes ingresados." }, 400);
+        const identity = operationalIdentity();
+        if (!identity)
+          return json(
+            { error: "La acción no está disponible. Contacta al administrador del sistema." },
+            503,
+          );
+        await saveOperationalCost({
+          ...parsed.data,
+          sourceNote: parsed.data.sourceNote?.trim() || null,
+          operator: identity.name,
+          operatorRole: identity.role,
+        });
+        return json({ ok: true }, 201);
+      }
       if (request.method !== "GET") return json({ error: "Method not allowed." }, 405);
       const page = pagination(url);
       if (path === "/api/telemetry/history")
@@ -179,6 +218,8 @@ export async function handleOperationsApi(request: Request): Promise<Response | 
         return json(await listOperationsLog(page.plantCode, page.limit, page.offset));
       if (path === "/api/shift-handovers")
         return json(await listHandovers(page.plantCode, page.limit, page.offset));
+      if (path === "/api/operational-costs")
+        return json(await listOperationalCosts(page.plantCode, page.limit, page.offset));
       return json(await listRecommendations(page.plantCode, page.limit, page.offset));
     }
 
