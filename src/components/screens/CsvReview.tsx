@@ -64,9 +64,9 @@ export function CsvReview() {
       const result = (await response.json()) as ImportSummary;
       setSummary(result);
       if (!response.ok || !result.persisted)
-        throw new Error(result.error ?? "El servidor no confirmó persistencia.");
+        throw new Error(result.error ?? "No se pudo completar la importación.");
       toast.success(
-        `${result.accepted} filas guardadas en SQL Server; ${result.rejected} rechazadas.`,
+        `${result.accepted} filas importadas; ${result.rejected} rechazadas.`,
       );
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : "No se pudo enviar el CSV.";
@@ -88,10 +88,10 @@ export function CsvReview() {
   return (
     <section className="space-y-4 rounded-xl border bg-background p-5">
       <div>
-        <h2 className="text-lg font-bold">Carga CSV de snapshots completos</h2>
+        <h2 className="text-lg font-bold">Importar lecturas CSV</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Cada fila debe representar una muestra consolidada de TelemetrySnapshots. Las lecturas
-          sueltas por sensor no pueden mapearse sin ambigüedad al esquema existente.
+          Cada fila debe incluir una muestra completa del proceso. Las lecturas aisladas de sensores
+          no se pueden importar como una muestra completa.
         </p>
       </div>
       <div className="flex flex-wrap gap-2">
@@ -224,7 +224,7 @@ export function CsvReview() {
           className={`space-y-1 rounded-lg border p-4 text-sm ${summary.persisted ? "border-emerald-500/30 bg-emerald-500/5" : "border-destructive/30 bg-destructive/5"}`}
         >
           <p className="font-semibold">
-            {summary.persisted ? "Resultado guardado en SQL Server" : "No se confirmó persistencia"}
+            {summary.persisted ? "Importación completada" : "No se completó la importación"}
           </p>
           <p>
             Aceptadas: {summary.accepted} · Rechazadas: {summary.rejected}

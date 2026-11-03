@@ -111,7 +111,6 @@ function RootShell({ children }: { children: ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        <div className="demo-status" role="status">Demostración · Datos de ejemplo · Sin conexión a equipos reales</div>
         {children}
         <Scripts />
       </body>

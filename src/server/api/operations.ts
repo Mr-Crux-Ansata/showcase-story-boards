@@ -90,7 +90,7 @@ function pagination(url: URL) {
     offset < 0 ||
     !/^[A-Za-z0-9_-]{1,50}$/.test(plantCode)
   ) {
-    throw new TypeError("Invalid plantCode, limit, or offset.");
+    throw new TypeError("La planta o el rango solicitado no es válido.");
   }
   return { plantCode, limit, offset };
 }
@@ -99,7 +99,7 @@ async function parseJson(request: Request): Promise<unknown> {
   try {
     return await request.json();
   } catch {
-    throw new TypeError("Request body must be valid JSON.");
+    throw new TypeError("Los datos enviados no tienen un formato válido.");
   }
 }
 
@@ -133,11 +133,11 @@ export async function handleOperationsApi(request: Request): Promise<Response | 
           );
         const parsed = AlertCreateSchema.safeParse(await parseJson(request));
         if (!parsed.success)
-          return json({ error: "Invalid alert payload.", details: parsed.error.flatten() }, 400);
+          return json({ error: "Revisa los datos de la alerta.", details: parsed.error.flatten() }, 400);
         const identity = operationalIdentity();
         if (!identity)
           return json(
-            { error: "Configure OPERATOR_NAME and OPERATOR_ROLE before creating alerts." },
+            { error: "La acción no está disponible. Contacta al administrador del sistema." },
             503,
           );
         const alert = await createAlert({
@@ -155,11 +155,11 @@ export async function handleOperationsApi(request: Request): Promise<Response | 
           );
         const parsed = HandoverSchema.safeParse(await parseJson(request));
         if (!parsed.success)
-          return json({ error: "Invalid handover payload.", details: parsed.error.flatten() }, 400);
+          return json({ error: "Revisa los datos del cierre de turno.", details: parsed.error.flatten() }, 400);
         const identity = operationalIdentity();
         if (!identity)
           return json(
-            { error: "Configure OPERATOR_NAME and OPERATOR_ROLE before recording a handover." },
+            { error: "La acción no está disponible. Contacta al administrador del sistema." },
             503,
           );
         const result = await createHandover({
@@ -196,7 +196,7 @@ export async function handleOperationsApi(request: Request): Promise<Response | 
       const identity = operationalIdentity();
       if (!identity)
         return json(
-          { error: "Configure OPERATOR_NAME and OPERATOR_ROLE before changing alert status." },
+          { error: "La acción no está disponible. Contacta al administrador del sistema." },
           503,
         );
       const result = await updateAlert({
@@ -214,9 +214,9 @@ export async function handleOperationsApi(request: Request): Promise<Response | 
     return null;
   } catch (error) {
     if (error instanceof DatabaseUnavailableError)
-      return json({ error: "Database persistence is unavailable." }, 503);
+      return json({ error: "No se pudo completar la operación. Intenta de nuevo más tarde." }, 503);
     if (error instanceof TypeError) return json({ error: error.message }, 400);
     logServerError("Operational API request failed.", error);
-    return json({ error: "The requested operation could not be completed." }, 500);
+    return json({ error: "No se pudo completar la operación. Intenta de nuevo más tarde." }, 500);
   }
 }

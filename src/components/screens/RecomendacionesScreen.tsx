@@ -80,12 +80,11 @@ export function RecomendacionesScreen() {
         body: JSON.stringify({ plantCode }),
       });
       const body = (await response.json()) as OptimizeResponse & { error?: string };
-      if (!response.ok)
-        throw new Error(body.error ?? `No se pudo calcular la recomendación (${response.status}).`);
+      if (!response.ok) throw new Error(body.error ?? "No se pudo calcular la recomendación.");
       setGenerated(body);
       setRefresh((value) => value + 1);
       if (!body.persisted)
-        setError(body.warning ?? "Resultado calculado pero no persistido; no se puede aprobar.");
+        setError(body.warning ?? "La recomendación no se guardó y no se puede aprobar.");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Error de optimización.");
     } finally {
@@ -133,16 +132,15 @@ export function RecomendacionesScreen() {
         body: JSON.stringify(payload),
       });
       const body = (await response.json()) as { error?: string; status?: string };
-      if (!response.ok)
-        throw new Error(body.error ?? `No se pudo guardar la decisión (${response.status}).`);
+      if (!response.ok) throw new Error(body.error ?? "No se pudo guardar la decisión.");
       setGenerated(null);
       setRefresh((value) => value + 1);
       setConfirming(false);
       toast.success(
         next === "APROBADA"
-          ? "Recomendación aprobada. El simulador la leerá en su siguiente consulta; no se envió a un PLC."
+          ? "Recomendación aprobada para la simulación. No se enviaron órdenes a equipos reales."
           : next === "REVOKE"
-            ? "Aprobación retirada; los siguientes paquetes simulados dejarán de usar esa dosis."
+            ? "Aprobación retirada para los próximos ciclos de simulación."
             : `Recomendación ${next.toLowerCase()}.`,
       );
     } catch (cause) {
@@ -164,12 +162,9 @@ export function RecomendacionesScreen() {
         body: JSON.stringify({ recommendationId, plantCode, shiftCode: shift }),
       });
       const body = (await response.json()) as { error?: string };
-      if (!response.ok)
-        throw new Error(body.error ?? `No se pudo retirar la aprobación (${response.status}).`);
+      if (!response.ok) throw new Error(body.error ?? "No se pudo retirar la aprobación.");
       setRefresh((value) => value + 1);
-      toast.success(
-        "Aprobación retirada; el siguiente paquete simulado usará la configuración activa previa.",
-      );
+      toast.success("Aprobación retirada para los próximos ciclos de simulación.");
     } catch (cause) {
       toast.error(cause instanceof Error ? cause.message : "No se pudo retirar la aprobación.");
     } finally {
@@ -184,11 +179,11 @@ export function RecomendacionesScreen() {
           <div>
             <h1 className="text-2xl font-bold text-scada-ink-33">Recomendaciones IA</h1>
             <p className="mt-1 text-sm text-scada-ink-35">
-              El surrogate calcula; la persona operadora decide. No existe conexión a un PLC real.
+              Un modelo estima la dosis sugerida; la persona operadora decide si aprobarla.
             </p>
           </div>
           <span className="rounded-full border px-3 py-1 text-xs font-bold">
-            {isLive ? "Gateway simulado conectado" : "Gateway desconectado"}
+            {isLive ? "Simulación conectada" : "Sin telemetría en vivo"}
           </span>
         </header>
 
@@ -197,7 +192,7 @@ export function RecomendacionesScreen() {
             role="alert"
             className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive"
           >
-            No se pudo cargar historial: {history.error}
+            No se pudo cargar el historial de recomendaciones. Intenta de nuevo más tarde.
           </p>
         )}
         {error && (
@@ -213,7 +208,7 @@ export function RecomendacionesScreen() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase text-primary">
-                  {generated?.result.modelVersion ?? pending?.modelVersion ?? "Modelo surrogate"}
+                  Modelo de estimación PAC
                 </p>
                 <h2 className="mt-1 text-xl font-bold">Optimización de dosificación PAC</h2>
               </div>
@@ -261,14 +256,12 @@ export function RecomendacionesScreen() {
                     </strong>
                   </p>
                   <p>
-                    Estado guardado:{" "}
-                    <strong>
-                      {status ?? (generated?.persisted ? "PENDIENTE" : "no persistida")}
-                    </strong>
+                    Estado de la recomendación:{" "}
+                    <strong>{status ?? (generated?.persisted ? "PENDIENTE" : "Temporal")}</strong>
                   </p>
                   {pending && (
                     <p className="text-xs text-muted-foreground">
-                      Creada: {createdAt(pending.createdAt)} · Confianza:{" "}
+                      Creada: {createdAt(pending.createdAt)} · Confianza estimada:{" "}
                       {pending.modelConfidencePct}%
                     </p>
                   )}
@@ -303,13 +296,13 @@ export function RecomendacionesScreen() {
                 </div>
                 {!doseCheck.ok && dose !== null && (
                   <p className="text-sm text-destructive">
-                    {doseCheck.reason} Rango de aprobación configurado: {SAFE_DOSE_MIN}–
-                    {SAFE_DOSE_MAX} ppm.
+                    {doseCheck.reason} La dosis debe estar entre {SAFE_DOSE_MIN}–{SAFE_DOSE_MAX}{" "}
+                    ppm.
                   </p>
                 )}
                 {generated && !generated.persisted && (
                   <p className="text-sm text-amber-700">
-                    El cálculo no se guardó en la base de datos; no habilitamos su aprobación.
+                    El resultado no quedó guardado y no se puede aprobar.
                   </p>
                 )}
               </>
@@ -317,7 +310,7 @@ export function RecomendacionesScreen() {
           </article>
 
           <article className="space-y-3 rounded-xl border bg-background p-6">
-            <h2 className="text-lg font-bold">Historial persistido</h2>
+            <h2 className="text-lg font-bold">Historial de recomendaciones</h2>
             {(history.data?.data ?? []).length === 0 && !history.loading && (
               <p className="text-sm text-muted-foreground">Sin recomendaciones almacenadas.</p>
             )}
@@ -325,13 +318,11 @@ export function RecomendacionesScreen() {
               {history.data?.data.map((record) => (
                 <li key={record.recommendationId} className="rounded-lg border p-3 text-sm">
                   <div className="flex justify-between gap-2">
-                    <strong>
-                      {record.recommendedValue.toFixed(2)} ppm · {record.parameterName}
-                    </strong>
+                    <strong>{record.recommendedValue.toFixed(2)} ppm · Dosis PAC</strong>
                     <span>{record.status}</span>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {createdAt(record.createdAt)} · {record.modelVersion}
+                    {createdAt(record.createdAt)}
                   </p>
                   {record.status === "APROBADA" && (
                     <Button
@@ -351,9 +342,7 @@ export function RecomendacionesScreen() {
         </section>
 
         <section className="rounded-xl border bg-muted/30 p-5 text-sm text-muted-foreground">
-          La aprobación solo cambia el estado de la recomendación. El gateway de simulación
-          consultará ese estado y reflejará la dosis en paquetes futuros; ningún PLC recibe comandos
-          ni hay reconocimiento de ejecución real.
+          Las recomendaciones aprobadas solo afectan a la simulación; no controlan equipos reales.
         </section>
 
         <AlertDialog open={confirming} onOpenChange={setConfirming}>
@@ -361,8 +350,7 @@ export function RecomendacionesScreen() {
             <AlertDialogHeader>
               <AlertDialogTitle>¿Aprobar la recomendación de {dose ?? "—"} ppm?</AlertDialogTitle>
               <AlertDialogDescription>
-                Se guardará la decisión del operador. El gateway de simulación la consultará en su
-                siguiente ciclo. No se transmitirá a un PLC real.
+                Esta aprobación solo afecta a la simulación y no envía órdenes a equipos reales.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

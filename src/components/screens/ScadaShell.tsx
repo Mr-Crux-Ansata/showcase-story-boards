@@ -31,7 +31,7 @@ export function ScadaShell({ children }: { children: ReactNode }) {
                 </span>
               </div>
               <span className="font-label-mono text-[10px] text-scada-ink-12/80 tracking-normal uppercase">
-                SCADA CORE v3.4
+                MONITOREO DE PLANTA
               </span>
             </div>
           </div>
@@ -49,10 +49,10 @@ export function ScadaShell({ children }: { children: ReactNode }) {
                 </span>
                 <div>
                   <div className="font-label-mono text-[11px] text-scada-ink-10 font-semibold leading-tight">
-                    {isLive ? "Telemetría Edge Viva" : "Sin telemetría viva"}
+                    {isLive ? "Telemetría en vivo" : "Sin telemetría en vivo"}
                   </div>
                   <div className="font-label-mono text-[9px] text-scada-ink-15">
-                    {isLive ? `Gateway: ${data?.plantCode ?? ""}` : "Sin conexión al simulador"}
+                    {isLive ? `Planta: ${data?.plantCode ?? ""}` : "Simulación desconectada"}
                   </div>
                 </div>
               </div>
@@ -180,10 +180,10 @@ export function ScadaShell({ children }: { children: ReactNode }) {
               <span className="material-symbols-outlined text-[13px] text-scada-ink-15">
                 memory
               </span>
-              Gateway simulado
+              Fuente simulada
             </span>
             <span className={isLive ? "text-emerald-400 font-bold" : "text-scada-ink-14 font-bold"}>
-              {isLive ? "● SIMULADO EN VIVO" : "● SIN CONEXIÓN"}
+              {isLive ? "● SIMULACIÓN EN VIVO" : "● SIN CONEXIÓN"}
             </span>
           </div>
         </div>

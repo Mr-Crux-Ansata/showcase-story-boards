@@ -41,6 +41,12 @@ export function TopBar() {
   const open = alerts.filter((alert) => alert.status === "abierta").length;
   const shift = SHIFTS.find((s) => s.id === shiftId) ?? SHIFTS[1]!;
   const { isLive, data } = useLiveTelemetry();
+  const signalLabel =
+    data?.gatewayStatus === "DEGRADED"
+      ? "Señal degradada"
+      : data?.gatewayStatus === "CALIBRATING"
+        ? "Calibrando"
+        : "Señal en línea";
 
   async function updateStatus(alertId: number, status: OperationalAlert["status"]) {
     const pausedUntil =
@@ -128,7 +134,7 @@ export function TopBar() {
         {isLive && (
           <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-emerald-800 text-xs font-label-mono font-medium">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span>Edge {data?.gatewayStatus}</span>
+            <span>{signalLabel}</span>
           </div>
         )}
         <Popover>
@@ -196,10 +202,10 @@ export function TopBar() {
             </span>
             <span className="flex flex-col">
               <span className="text-xs font-bold text-scada-ink-33 leading-tight">
-                {operator?.operatorName ?? "Operador sin configurar"}
+                {operator?.operatorName ?? "Operador no asignado"}
               </span>
               <span className="text-[10px] font-label-mono text-scada-ink-34 leading-tight mt-0.5">
-                {operator?.operatorRole ?? "Sin rol configurado"}
+                {operator?.operatorRole ?? "Rol no disponible"}
               </span>
             </span>
           </DropdownMenuTrigger>

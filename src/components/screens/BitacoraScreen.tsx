@@ -35,6 +35,21 @@ const initialForm = (): HandoverForm => ({
 });
 const dateTime = (value: string) => new Date(value).toLocaleString("es-MX");
 
+function applicationStatusLabel(status: string) {
+  const labels: Record<string, string> = {
+    ACK_OK: "Registrado",
+    APPROVED_NOT_APPLIED: "Aprobado para la simulación",
+    NOT_APPLIED: "No aplicado",
+    NOT_APPLICABLE: "No aplica",
+    SIMULATED_APPROVAL_REVOKED: "Aprobación retirada en la simulación",
+  };
+  return labels[status] ?? "Registrado";
+}
+
+function handoverStatusLabel(status: string) {
+  return status === "FIRMADO" ? "Firmado" : "Pendiente";
+}
+
 export function BitacoraScreen() {
   const plant = useAppContext((state) => state.plant);
   const shift = useAppContext((state) => state.shift);
@@ -96,7 +111,7 @@ export function BitacoraScreen() {
         "detalle",
         "operador",
         "rol",
-        "estado_plc",
+        "estado_aplicacion",
       ];
       const rows = records.map((item) => [
         item.loggedAt,
@@ -106,10 +121,10 @@ export function BitacoraScreen() {
         item.detail,
         item.operatorName,
         item.operatorRole,
-        item.plcAckStatus,
+        applicationStatusLabel(item.plcAckStatus),
       ]);
       downloadText(`bitacora_${plantCode}_${today()}.csv`, toCsv(columns, rows));
-      toast.success(`Exportados ${records.length} registros persistidos.`);
+      toast.success(`Exportados ${records.length} registros.`);
     } catch (cause) {
       toast.error(cause instanceof Error ? cause.message : "No se pudo exportar la bitácora.");
     } finally {
@@ -124,7 +139,7 @@ export function BitacoraScreen() {
           <div>
             <h1 className="text-2xl font-bold text-scada-ink-33">Bitácora de operaciones</h1>
             <p className="mt-1 text-sm text-scada-ink-35">
-              Eventos persistidos y cierres registrados para {plant}.
+              Eventos y cierres registrados para {plant}.
             </p>
           </div>
           <Button
@@ -141,7 +156,7 @@ export function BitacoraScreen() {
             role="alert"
             className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive"
           >
-            No se pudo leer la bitácora: {logs.error}
+            No se pudo cargar la bitácora. Intenta de nuevo más tarde.
           </p>
         )}
         {logs.loading && <p role="status">Cargando eventos…</p>}
@@ -182,7 +197,9 @@ export function BitacoraScreen() {
                     {entry.operatorName} · {entry.operatorRole}
                   </p>
                 </div>
-                <span className="text-xs text-muted-foreground">{entry.plcAckStatus}</span>
+                <span className="text-xs text-muted-foreground">
+                  {applicationStatusLabel(entry.plcAckStatus)}
+                </span>
               </li>
             ))}
           </ol>
@@ -193,8 +210,7 @@ export function BitacoraScreen() {
             <div>
               <h2 className="text-lg font-bold">Registrar entrega de turno</h2>
               <p className="text-sm text-muted-foreground">
-                Ingresa los valores medidos del cierre. La aplicación no los calcula a partir de
-                muestras con intervalos desconocidos.
+                Ingresa los valores medidos al cierre del turno.
               </p>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
@@ -288,8 +304,8 @@ export function BitacoraScreen() {
               </p>
             )}
             <p className="text-xs text-muted-foreground">
-              El nombre se toma de OPERATOR_NAME configurado en el servidor. El hash identifica la
-              integridad del contenido; no es una firma legal ni autenticación personal.
+              El registro incluye el operador y una marca de integridad. Esta no sustituye una firma
+              legal ni verifica la identidad.
             </p>
             <Button type="submit" disabled={saving}>
               {saving ? "Guardando…" : "Guardar cierre de turno"}
@@ -297,10 +313,10 @@ export function BitacoraScreen() {
           </form>
 
           <div className="space-y-3 rounded-xl border bg-background p-5">
-            <h2 className="text-lg font-bold">Entregas persistidas</h2>
+            <h2 className="text-lg font-bold">Entregas registradas</h2>
             {handovers.error && (
               <p role="alert" className="text-sm text-destructive">
-                No se pudieron cargar: {handovers.error}
+                No se pudieron cargar los cierres de turno. Intenta de nuevo más tarde.
               </p>
             )}
             {handovers.loading && <p role="status">Cargando cierres…</p>}
@@ -313,7 +329,7 @@ export function BitacoraScreen() {
                   <strong>
                     {handover.handoverDate} · Turno {handover.shiftCode}
                   </strong>
-                  <span>{handover.status}</span>
+                  <span>{handoverStatusLabel(handover.status)}</span>
                 </div>
                 <p className="mt-1 text-muted-foreground">
                   {handover.volumeTreatedM3} m³ · caudal {handover.averageFlowRateM3h} m³/h ·

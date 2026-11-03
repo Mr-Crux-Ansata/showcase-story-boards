@@ -58,7 +58,7 @@ export function AlertasScreen() {
               Desviaciones operativas y alertas
             </h1>
             <p className="mt-1 text-sm text-scada-ink-35">
-              Alertas almacenadas para {plant}. Las acciones cambian su estado en SQL Server.
+              Alertas de {plant}. Puedes pausarlas, resolverlas o volver a abrirlas.
             </p>
           </div>
           <div className="rounded-full bg-muted px-3 py-1 text-sm font-semibold">
@@ -86,7 +86,7 @@ export function AlertasScreen() {
             role="alert"
             className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive"
           >
-            No se pudieron cargar alertas: {error}
+            No se pudieron cargar las alertas. Intenta de nuevo más tarde.
           </p>
         )}
         {!loading && !error && visible.length === 0 && (
@@ -104,7 +104,7 @@ export function AlertasScreen() {
               <header className="flex flex-wrap items-start justify-between gap-2">
                 <div>
                   <p className="text-xs font-semibold uppercase text-muted-foreground">
-                    {alert.alertCode} · {alert.category}
+                    {alert.category}
                   </p>
                   <h2 className="mt-1 text-lg font-bold">{alert.title}</h2>
                 </div>

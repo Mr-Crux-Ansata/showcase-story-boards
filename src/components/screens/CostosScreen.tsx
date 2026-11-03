@@ -1,5 +1,18 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
+import {
+  CartesianGrid,
+  Legend,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { toast } from "sonner";
 import { ScadaShell } from "./ScadaShell";
 import { Button } from "@/components/ui/button";
@@ -43,6 +56,23 @@ export function CostosScreen() {
     ? (100 * history.data.data.filter((item) => item.nom001Compliant).length) /
       history.data.data.length
     : null;
+  const samples = [...(history.data?.data ?? [])].reverse();
+  const chartData = samples.map((sample) => ({
+    ...sample,
+    timeLabel: new Date(sample.recordedAt).toLocaleString("es-MX", {
+      day: "2-digit",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    }),
+  }));
+  const compliantCount = samples.filter((sample) => sample.nom001Compliant).length;
+  const nonCompliantCount = samples.length - compliantCount;
+  const average = (values: number[]) =>
+    values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
+  const averagePac = average(samples.map((sample) => sample.pacDosePpm));
+  const averageTurbidity = average(samples.map((sample) => sample.effluentTurbidityNtu));
+  const averageDqo = average(samples.map((sample) => sample.effluentDqoMgL));
   const latestRecommendation =
     recommendations.data?.data.find((item) => item.status === "PENDIENTE") ??
     recommendations.data?.data[0] ??
@@ -58,11 +88,11 @@ export function CostosScreen() {
         body: JSON.stringify({ plantCode }),
       });
       const body = (await response.json()) as OptimizationResponse & { error?: string };
-      if (!response.ok) throw new Error(body.error ?? `Optimización fallida (${response.status}).`);
+      if (!response.ok) throw new Error(body.error ?? "No se pudo calcular la recomendación.");
       setOptimization(body);
       setRefresh((value) => value + 1);
       if (body.persisted) toast.success("Recomendación calculada y guardada.");
-      else toast.warning("Recomendación calculada sin persistencia; no se puede aprobar.");
+      else toast.warning("Recomendación calculada temporalmente; no se puede aprobar.");
     } catch (error) {
       setActionError(
         error instanceof Error ? error.message : "No se pudo calcular la optimización.",
@@ -79,9 +109,7 @@ export function CostosScreen() {
         <header className="flex flex-wrap items-end justify-between gap-3 border-b border-scada-ink-26 pb-4">
           <div>
             <h1 className="text-2xl font-bold text-scada-ink-33">Centro de Mando Operativo</h1>
-            <p className="mt-1 text-sm text-scada-ink-35">
-              Telemetría e historial persistido de {plant}.
-            </p>
+            <p className="mt-1 text-sm text-scada-ink-35">Lecturas e historial de {plant}.</p>
           </div>
           <span className="text-xs text-scada-ink-35">
             {latest ? `Última muestra: ${date(latest.recordedAt)}` : "Sin muestras guardadas"}
@@ -93,8 +121,7 @@ export function CostosScreen() {
             role="alert"
             className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive"
           >
-            {history.error ?? recommendations.error}. La pantalla no sustituye datos faltantes por
-            valores de ejemplo.
+            No se pudieron cargar las lecturas o recomendaciones. Intenta de nuevo más tarde.
           </div>
         )}
         {history.loading && <p role="status">Cargando historial…</p>}
@@ -121,6 +148,131 @@ export function CostosScreen() {
           </section>
         )}
 
+        <section
+          className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
+          aria-label="Resumen estadístico"
+        >
+          {[
+            ["Muestras analizadas", `${samples.length} de ${history.data?.total ?? 0}`],
+            ["Cumplimiento registrado", compliance === null ? "—" : `${compliance.toFixed(1)}%`],
+            ["Dosis PAC promedio", averagePac === null ? "—" : `${averagePac.toFixed(2)} ppm`],
+            [
+              "Turbidez promedio",
+              averageTurbidity === null ? "—" : `${averageTurbidity.toFixed(2)} NTU`,
+            ],
+          ].map(([label, value]) => (
+            <article key={label} className="rounded-xl border bg-background p-5 shadow-sm">
+              <p className="text-xs font-semibold uppercase text-muted-foreground">{label}</p>
+              <p className="mt-2 text-2xl font-bold tabular-nums">{value}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Según las muestras mostradas abajo
+              </p>
+            </article>
+          ))}
+        </section>
+
+        {samples.length > 0 && (
+          <section className="grid gap-5 xl:grid-cols-2" aria-label="Gráficas de operación">
+            <article className="space-y-3 rounded-xl border bg-background p-5">
+              <div>
+                <h2 className="text-lg font-bold">Tendencia de dosificación PAC</h2>
+                <p className="text-sm text-muted-foreground">
+                  Dosis registrada por muestra, ordenada cronológicamente.
+                </p>
+              </div>
+              <ResponsiveContainer width="100%" height={280}>
+                <LineChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="timeLabel" minTickGap={28} />
+                  <YAxis unit=" ppm" width={60} />
+                  <Tooltip labelFormatter={(label) => `Muestra: ${label}`} />
+                  <Line
+                    type="monotone"
+                    dataKey="pacDosePpm"
+                    name="Dosis PAC"
+                    stroke="#0f766e"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </article>
+
+            <article className="space-y-3 rounded-xl border bg-background p-5">
+              <div>
+                <h2 className="text-lg font-bold">Calidad del efluente</h2>
+                <p className="text-sm text-muted-foreground">
+                  Tendencia de turbidez y DQO; cada indicador tiene su propia escala.
+                </p>
+              </div>
+              <ResponsiveContainer width="100%" height={280}>
+                <LineChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="timeLabel" minTickGap={28} />
+                  <YAxis yAxisId="turbidity" unit=" NTU" width={68} />
+                  <YAxis yAxisId="dqo" orientation="right" unit=" mg/L" width={70} />
+                  <Tooltip labelFormatter={(label) => `Muestra: ${label}`} />
+                  <Legend />
+                  <Line
+                    yAxisId="turbidity"
+                    type="monotone"
+                    dataKey="effluentTurbidityNtu"
+                    name="Turbidez"
+                    stroke="#2563eb"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                  <Line
+                    yAxisId="dqo"
+                    type="monotone"
+                    dataKey="effluentDqoMgL"
+                    name="DQO"
+                    stroke="#c2410c"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+              <p className="text-xs text-muted-foreground">
+                Promedios del periodo: turbidez {averageTurbidity?.toFixed(2) ?? "—"} NTU · DQO{" "}
+                {averageDqo?.toFixed(1) ?? "—"} mg/L.
+              </p>
+            </article>
+
+            <article className="space-y-3 rounded-xl border bg-background p-5 xl:col-span-2">
+              <div>
+                <h2 className="text-lg font-bold">Distribución de cumplimiento</h2>
+                <p className="text-sm text-muted-foreground">
+                  Clasificación de las muestras recibidas: {compliantCount} cumplen y{" "}
+                  {nonCompliantCount} no cumplen.
+                </p>
+              </div>
+              <ResponsiveContainer width="100%" height={220}>
+                <PieChart>
+                  <Pie
+                    data={[
+                      { name: "Cumple", value: compliantCount },
+                      { name: "No cumple", value: nonCompliantCount },
+                    ]}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={55}
+                    outerRadius={82}
+                    paddingAngle={3}
+                    label={({ name, value }) => `${name}: ${value}`}
+                  >
+                    <Cell fill="#0f766e" />
+                    <Cell fill="#dc2626" />
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </article>
+          </section>
+        )}
+
         <section className="grid gap-5 lg:grid-cols-2">
           <article className="space-y-4 rounded-xl border bg-background p-6">
             <div>
@@ -142,8 +294,7 @@ export function CostosScreen() {
             <div>
               <h2 className="text-lg font-bold">Optimización PAC</h2>
               <p className="text-sm text-muted-foreground">
-                El motor usa la última telemetría disponible y persiste el resultado cuando SQL
-                Server está conectado.
+                Proyección de dosis PAC, ahorro y calidad para las condiciones de proceso actuales.
               </p>
             </div>
             <Button
@@ -179,8 +330,8 @@ export function CostosScreen() {
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {optimization?.persisted
-                    ? "Persistida en SQL Server."
-                    : "Solo resultado temporal; aprobación deshabilitada."}
+                    ? "Recomendación guardada."
+                    : "Resultado temporal; no se puede aprobar."}
                 </p>
               </div>
             )}
@@ -209,9 +360,8 @@ export function CostosScreen() {
         <section className="rounded-xl border bg-background p-6">
           <h2 className="text-lg font-bold">Costos operativos</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            El esquema actual no almacena costos observados de energía, lodos ni membranas. El único
-            dato económico disponible es la proyección del modelo PAC mostrada arriba; no se
-            presenta como costo medido.
+            No hay mediciones de costos de energía, lodos o membranas disponibles en esta vista. El
+            ahorro de PAC mostrado arriba es una estimación.
           </p>
         </section>
       </main>

@@ -62,7 +62,7 @@ async function parseBody(request: Request): Promise<unknown> {
   try {
     return await request.json();
   } catch {
-    throw new TypeError("Request body must be valid JSON.");
+    throw new TypeError("Los datos enviados no tienen un formato válido.");
   }
 }
 
@@ -92,7 +92,7 @@ export async function handleAiOptimizeRequest(request: Request): Promise<Respons
       return json(
         {
           error:
-            "No recent process telemetry is available; provide the complete required inflow conditions.",
+            "No hay lecturas recientes suficientes para calcular una recomendación.",
         },
         409,
       );
@@ -123,7 +123,7 @@ export async function handleAiOptimizeRequest(request: Request): Promise<Respons
           inflowConditions,
           result,
           warning:
-            "The result is calculated but was not saved; approval is disabled until database persistence is available.",
+            "La recomendación se calculó, pero no pudo guardarse y no se puede aprobar.",
         },
         200,
       );
@@ -132,7 +132,7 @@ export async function handleAiOptimizeRequest(request: Request): Promise<Respons
     if (error instanceof TypeError) return json({ error: error.message }, 400);
     logServerError("AI optimization failed.", error);
     return json(
-      { error: "Optimization failed." },
+      { error: "No se pudo calcular la recomendación. Intenta de nuevo más tarde." },
       error instanceof DatabaseUnavailableError ? 503 : 500,
     );
   }
@@ -154,7 +154,7 @@ export async function handleAiApproveRequest(request: Request): Promise<Response
       return json(
         {
           error:
-            "Configure OPERATOR_NAME and OPERATOR_ROLE before recording operational decisions.",
+            "La acción no está disponible. Contacta al administrador del sistema.",
         },
         503,
       );
@@ -172,14 +172,14 @@ export async function handleAiApproveRequest(request: Request): Promise<Response
   } catch (error) {
     if (error instanceof TypeError) return json({ error: error.message }, 400);
     if (error instanceof DatabaseUnavailableError)
-      return json({ error: "Database persistence is unavailable." }, 503);
+      return json({ error: "No se pudo guardar la decisión. Intenta de nuevo más tarde." }, 503);
     if (
       error instanceof Error &&
       error.message === "Recommendation not found or already evaluated."
     )
       return json({ error: error.message }, 409);
     logServerError("AI recommendation decision failed.", error);
-    return json({ error: "Recommendation decision could not be recorded." }, 500);
+    return json({ error: "No se pudo guardar la decisión. Intenta de nuevo más tarde." }, 500);
   }
 }
 
@@ -197,7 +197,7 @@ export async function handleAiExpireRequest(request: Request): Promise<Response>
     const identity = operationalIdentity();
     if (!identity)
       return json(
-        { error: "Configure OPERATOR_NAME and OPERATOR_ROLE before expiring recommendations." },
+        { error: "La acción no está disponible. Contacta al administrador del sistema." },
         503,
       );
     const changed = await expireAiRecommendation({
@@ -210,9 +210,9 @@ export async function handleAiExpireRequest(request: Request): Promise<Response>
       : json({ error: "Pending recommendation not found." }, 404);
   } catch (error) {
     if (error instanceof DatabaseUnavailableError)
-      return json({ error: "Database persistence is unavailable." }, 503);
+      return json({ error: "No se pudo actualizar la recomendación. Intenta de nuevo más tarde." }, 503);
     logServerError("AI recommendation expiration failed.", error);
-    return json({ error: "Recommendation expiration could not be recorded." }, 500);
+    return json({ error: "No se pudo actualizar la recomendación. Intenta de nuevo más tarde." }, 500);
   }
 }
 
@@ -231,7 +231,7 @@ export async function handleAiRevokeRequest(request: Request): Promise<Response>
     if (!identity)
       return json(
         {
-          error: "Configure OPERATOR_NAME and OPERATOR_ROLE before changing operational decisions.",
+          error: "La acción no está disponible. Contacta al administrador del sistema.",
         },
         503,
       );
@@ -249,10 +249,10 @@ export async function handleAiRevokeRequest(request: Request): Promise<Response>
     });
   } catch (error) {
     if (error instanceof DatabaseUnavailableError)
-      return json({ error: "Database persistence is unavailable." }, 503);
+      return json({ error: "No se pudo actualizar la recomendación. Intenta de nuevo más tarde." }, 503);
     if (error instanceof Error && error.message === "Approved recommendation not found.")
       return json({ error: error.message }, 404);
     logServerError("AI approval reversal failed.", error);
-    return json({ error: "Approval reversal could not be recorded." }, 500);
+    return json({ error: "No se pudo retirar la aprobación. Intenta de nuevo más tarde." }, 500);
   }
 }

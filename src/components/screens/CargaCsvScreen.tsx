@@ -9,8 +9,8 @@ export function CargaCsvScreen() {
           <p className="text-xs font-semibold uppercase text-primary">Ingesta histórica</p>
           <h1 className="mt-1 text-2xl font-bold text-scada-ink-33">Carga de telemetría CSV</h1>
           <p className="mt-1 max-w-3xl text-sm text-scada-ink-35">
-            Las filas válidas se insertan de forma transaccional en TelemetrySnapshots. Si SQL
-            Server no está disponible, se informa que no se guardó nada.
+            Revisa las lecturas del archivo antes de importarlas. Te indicaremos qué filas necesitan
+            corrección.
           </p>
         </header>
         <CsvReview />

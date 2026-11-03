@@ -342,23 +342,6 @@
 }
 @media (prefers-reduced-motion: reduce) { .scada-import * { animation: none !important; transition: none !important; } }
 
-:root {
-  --demo-status-height: 40px;
-  --demo-status-background: var(--color-sky-100);
-  --demo-status-foreground: var(--color-sky-900);
-}
-.demo-status {
-  position: fixed; inset: 0 0 auto; z-index: 100;
-  min-height: var(--demo-status-height);
-  display: flex; align-items: center; justify-content: center;
-  padding: 8px 16px; font-size: 13px; font-weight: 600;
-  background: var(--demo-status-background); color: var(--demo-status-foreground);
-  text-align: center; line-height: 1.4;
-}
-body { padding-top: var(--demo-status-height); }
-.scada-import aside, .scada-root aside { top: var(--demo-status-height); height: calc(100% - var(--demo-status-height)); }
-.scada-import header.fixed, .scada-root header.fixed { top: var(--demo-status-height); }
-@media (max-width: 1350px) { .scada-import header.fixed { top: auto; } }
 :is(.scada-import, .scada-root) main { overflow-wrap: normal; }
 :is(.scada-import, .scada-root) main :is(p, .text-body-md) { font-size: 14px; line-height: 1.6; }
 :is(.scada-import, .scada-root) main :is(.text-xs, .text-caption, .text-label-mono, .text-body-sm, [class*="text-[9px]"], [class*="text-[10px]"], [class*="text-[11px]"]) { font-size: 12px; line-height: 1.5; }
@@ -380,7 +363,6 @@ body { padding-top: var(--demo-status-height); }
 .scada-root main .truncate { overflow-wrap: anywhere; }
 .scada-root main .shrink-0 { max-width: 100%; }
 @media (max-width: 767px) {
-  :root { --demo-status-height: 52px; }
   .scada-import aside { top: auto; height: auto; }
   .scada-import main .flex.items-center { flex-wrap: wrap; }
   .scada-import main .grid-cols-3 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
@@ -395,7 +377,7 @@ body { padding-top: var(--demo-status-height); }
   .scada-import aside .h-20 { padding-left: 16px; padding-right: 16px; }
 }
 @media (max-width: 767px) {
-  .scada-import aside { position: sticky; top: var(--demo-status-height); z-index: 50; box-shadow: 0 4px 12px rgb(0 0 0 / 0.2); }
+  .scada-import aside { position: sticky; top: 0; z-index: 50; box-shadow: 0 4px 12px rgb(0 0 0 / 0.2); }
   .scada-import aside .h-20 { height: 56px; }
   .scada-import aside > div:first-child > div:nth-child(2) { display: none; }
   .scada-import nav { display: flex; flex-direction: row; overflow-x: auto; gap: 6px; padding: 8px 12px; scrollbar-width: none; }

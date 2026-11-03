@@ -39,7 +39,7 @@ export async function handleCsvIngestionRequest(request: Request) {
   if (!isSameOriginRequest(request))
     return json({ error: "CSV imports must come from this application origin." }, 403);
   if (!request.headers.get("content-type")?.toLowerCase().startsWith("text/csv"))
-    return json({ error: "Content-Type must be text/csv." }, 415);
+    return json({ error: "El archivo debe tener formato CSV." }, 415);
   try {
     const text = await readLimitedCsv(request);
     const parsed = parseCsv(text);
@@ -49,7 +49,7 @@ export async function handleCsvIngestionRequest(request: Request) {
     if (headerErrors.length || parsed.headers.length === 0) {
       return json(
         {
-          error: "CSV header is invalid.",
+          error: "Los encabezados del archivo no son válidos.",
           accepted: 0,
           rejected: parsed.rows.length,
           persisted: false,
@@ -100,7 +100,7 @@ export async function handleCsvIngestionRequest(request: Request) {
       if (!payload.success) {
         issues.push({
           row: rowNumber,
-          message: "Telemetry fields do not match the snapshot schema.",
+          message: "La fila debe incluir una muestra completa con valores válidos.",
         });
         continue;
       }
@@ -130,7 +130,7 @@ export async function handleCsvIngestionRequest(request: Request) {
     if (!identity)
       return json(
         {
-          error: "Configure OPERATOR_NAME and OPERATOR_ROLE before importing CSV data.",
+          error: "La importación no está disponible. Contacta al administrador del sistema.",
           persisted: false,
           accepted: 0,
           rejected: parsed.rows.length,
@@ -155,7 +155,7 @@ export async function handleCsvIngestionRequest(request: Request) {
       if (error instanceof DatabaseUnavailableError)
         return json(
           {
-            error: "Database persistence is unavailable; no CSV rows were stored.",
+            error: "No se pudo completar la importación. No se guardaron filas.",
             persisted: false,
             accepted: 0,
             rejected: parsed.rows.length,
@@ -167,11 +167,14 @@ export async function handleCsvIngestionRequest(request: Request) {
     }
   } catch (error) {
     if (error instanceof RangeError)
-      return json({ error: error.message, persisted: false, accepted: 0, rejected: 0 }, 413);
+      return json(
+        { error: "El archivo supera el límite de 5 MB.", persisted: false, accepted: 0, rejected: 0 },
+        413,
+      );
     if (error instanceof DatabaseUnavailableError)
       return json(
         {
-          error: "Database persistence is unavailable; no CSV rows were stored.",
+          error: "No se pudo completar la importación. No se guardaron filas.",
           persisted: false,
           accepted: 0,
           rejected: 0,
@@ -181,7 +184,7 @@ export async function handleCsvIngestionRequest(request: Request) {
     logServerError("CSV telemetry import failed.", error);
     return json(
       {
-        error: "CSV import failed; the transaction was rolled back.",
+        error: "No se pudo completar la importación. No se guardaron filas.",
         persisted: false,
         accepted: 0,
       },

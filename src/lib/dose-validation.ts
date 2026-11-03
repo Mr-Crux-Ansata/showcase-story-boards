@@ -8,7 +8,7 @@ export function validateDose(ppm: number, qualityWithinLimits = true): DoseCheck
   if (ppm < SAFE_DOSE_MIN || ppm > SAFE_DOSE_MAX) {
     return {
       ok: false,
-      reason: `La dosis ${ppm} ppm está fuera del rango configurado (${SAFE_DOSE_MIN}–${SAFE_DOSE_MAX} ppm).`,
+      reason: `La dosis ${ppm} ppm está fuera del rango permitido (${SAFE_DOSE_MIN}–${SAFE_DOSE_MAX} ppm).`,
     };
   }
   if (!qualityWithinLimits)
