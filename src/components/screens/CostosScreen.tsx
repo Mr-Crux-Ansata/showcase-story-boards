@@ -17,7 +17,16 @@ import {
   YAxis,
 } from "recharts";
 import { toast } from "sonner";
-import { Activity, BadgeCheck, Beaker, CircleAlert, Droplets, Gauge } from "lucide-react";
+import {
+  Activity,
+  BadgeCheck,
+  Beaker,
+  CircleAlert,
+  Droplets,
+  Gauge,
+  Lightbulb,
+  Wallet,
+} from "lucide-react";
 import { ScadaShell } from "./ScadaShell";
 import { Button } from "@/components/ui/button";
 import { useApiData } from "@/hooks/use-api-data";
@@ -237,14 +246,28 @@ export function CostosScreen() {
   return (
     <ScadaShell>
       <main className="min-h-screen space-y-6 px-8 pb-16 pt-24">
-        <header className="flex flex-wrap items-end justify-between gap-3 border-b border-scada-ink-26 pb-4">
-          <div>
-            <h1 className="text-2xl font-bold text-scada-ink-33">Centro de Mando Operativo</h1>
-            <p className="mt-1 text-sm text-scada-ink-35">Lecturas e historial de {plant}.</p>
+        <header className="relative overflow-hidden rounded-2xl border border-cyan-200 bg-gradient-to-br from-cyan-50 via-background to-emerald-50 p-6 shadow-sm">
+          <div className="pointer-events-none absolute -right-8 -top-12 h-48 w-48 rounded-full bg-cyan-300/20 blur-3xl" />
+          <div className="relative flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <span className="rounded-2xl bg-gradient-to-br from-cyan-600 to-teal-700 p-3 text-white shadow-lg shadow-cyan-900/20">
+                <Activity aria-hidden="true" className="h-7 w-7" />
+              </span>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-cyan-800">
+                  Centro de mando
+                </p>
+                <h1 className="text-2xl font-bold text-scada-ink-33">Centro de Mando Operativo</h1>
+                <p className="mt-1 text-sm text-scada-ink-35">Lecturas e historial de {plant}.</p>
+              </div>
+            </div>
+            <span className="inline-flex items-center gap-2 rounded-xl border border-cyan-200 bg-white/80 px-3 py-2 text-xs font-semibold text-cyan-900 shadow-sm">
+              <span
+                className={`h-2 w-2 rounded-full ${latest ? "bg-emerald-500" : "bg-slate-400"}`}
+              />
+              {latest ? `Última muestra: ${date(latest.recordedAt)}` : "Sin muestras guardadas"}
+            </span>
           </div>
-          <span className="text-xs text-scada-ink-35">
-            {latest ? `Última muestra: ${date(latest.recordedAt)}` : "Sin muestras guardadas"}
-          </span>
         </header>
 
         {(history.error || recommendations.error) && (
@@ -257,7 +280,7 @@ export function CostosScreen() {
         )}
         {history.loading && <p role="status">Cargando historial…</p>}
         {!history.loading && !history.error && !latest && (
-          <p className="rounded-lg border p-5 text-sm text-muted-foreground">
+          <p className="rounded-xl border border-sky-200 bg-sky-50 p-5 text-sm text-sky-950">
             No hay telemetría histórica disponible para esta planta.
           </p>
         )}
@@ -339,9 +362,9 @@ export function CostosScreen() {
 
         {samples.length > 0 && (
           <section className="grid gap-5 xl:grid-cols-2" aria-label="Gráficas de operación">
-            <article className="space-y-3 rounded-xl border bg-background p-5">
+            <article className="space-y-3 rounded-xl border border-teal-200 bg-gradient-to-br from-background via-background to-teal-50/60 p-5 shadow-sm">
               <div>
-                <h2 className="text-lg font-bold">Tendencia de dosificación PAC</h2>
+                <h2 className="text-lg font-bold text-teal-950">Tendencia de dosificación PAC</h2>
                 <p className="text-sm text-muted-foreground">
                   Dosis registrada por muestra, ordenada cronológicamente.
                 </p>
@@ -364,9 +387,9 @@ export function CostosScreen() {
               </ResponsiveContainer>
             </article>
 
-            <article className="space-y-3 rounded-xl border bg-background p-5">
+            <article className="space-y-3 rounded-xl border border-sky-200 bg-gradient-to-br from-background via-background to-sky-50/60 p-5 shadow-sm">
               <div>
-                <h2 className="text-lg font-bold">Calidad del efluente</h2>
+                <h2 className="text-lg font-bold text-sky-950">Calidad del efluente</h2>
                 <p className="text-sm text-muted-foreground">
                   Tendencia de turbidez y DQO; cada indicador tiene su propia escala.
                 </p>
@@ -419,9 +442,9 @@ export function CostosScreen() {
               </p>
             </article>
 
-            <article className="space-y-3 rounded-xl border bg-background p-5 xl:col-span-2">
+            <article className="space-y-3 rounded-xl border border-violet-200 bg-gradient-to-br from-background via-background to-violet-50/60 p-5 shadow-sm xl:col-span-2">
               <div>
-                <h2 className="text-lg font-bold">Distribución de cumplimiento</h2>
+                <h2 className="text-lg font-bold text-violet-950">Distribución de cumplimiento</h2>
                 <p className="text-sm text-muted-foreground">
                   Clasificación de las muestras recibidas: {compliantCount} cumplen y{" "}
                   {nonCompliantCount} no cumplen.
@@ -459,15 +482,17 @@ export function CostosScreen() {
         )}
 
         <section className="grid gap-5 lg:grid-cols-2">
-          <article className="space-y-4 rounded-xl border bg-background p-6">
+          <article className="space-y-4 rounded-xl border border-emerald-200 bg-gradient-to-br from-emerald-50/70 via-background to-background p-6 shadow-sm">
             <div>
-              <h2 className="text-lg font-bold">Cumplimiento según muestras guardadas</h2>
+              <h2 className="text-lg font-bold text-emerald-950">
+                Cumplimiento según muestras guardadas
+              </h2>
               <p className="text-sm text-muted-foreground">
                 Proporción de las últimas {history.data?.data.length ?? 0} muestras que cumplen los
                 límites calculados al recibirlas.
               </p>
             </div>
-            <p className="text-3xl font-bold">
+            <p className="text-3xl font-bold text-emerald-800">
               {compliance === null ? "—" : `${compliance.toFixed(1)}%`}
             </p>
             <p className="text-xs text-muted-foreground">
@@ -475,9 +500,14 @@ export function CostosScreen() {
             </p>
           </article>
 
-          <article className="space-y-4 rounded-xl border bg-background p-6">
+          <article className="space-y-4 rounded-xl border border-violet-200 bg-gradient-to-br from-violet-50/70 via-background to-background p-6 shadow-sm">
             <div>
-              <h2 className="text-lg font-bold">Optimización PAC</h2>
+              <div className="flex items-center gap-2">
+                <span className="rounded-lg bg-violet-100 p-2 text-violet-700">
+                  <Lightbulb aria-hidden="true" className="h-4 w-4" />
+                </span>
+                <h2 className="text-lg font-bold text-violet-950">Optimización PAC</h2>
+              </div>
               <p className="text-sm text-muted-foreground">
                 Proyección de dosis PAC, ahorro y calidad para las condiciones de proceso actuales.
               </p>
@@ -485,6 +515,7 @@ export function CostosScreen() {
             <Button
               onClick={runOptimization}
               disabled={optimizing || (!latest && !hasLiveTelemetryForPlant)}
+              className="bg-violet-700 text-white hover:bg-violet-800"
             >
               {optimizing ? "Calculando…" : "Calcular recomendación"}
             </Button>
@@ -494,7 +525,7 @@ export function CostosScreen() {
               </p>
             )}
             {result && (
-              <div className="space-y-2 rounded-lg bg-muted/50 p-4 text-sm">
+              <div className="space-y-2 rounded-xl border border-violet-200 bg-violet-50/70 p-4 text-sm text-violet-950">
                 <p>
                   Dosis actual: <strong>{result.currentDosePpm.toFixed(2)} ppm</strong>
                 </p>
@@ -542,16 +573,24 @@ export function CostosScreen() {
           </article>
         </section>
 
-        <section className="space-y-5 rounded-xl border bg-background p-6">
-          <div>
-            <h2 className="text-lg font-bold">Costos operativos reales</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Registra los importes mensuales de facturas o reportes. Se mantienen separados del
-              ahorro PAC, que es una proyección del modelo.
-            </p>
+        <section className="space-y-5 rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50/70 via-background to-background p-6 shadow-sm">
+          <div className="flex items-start gap-3">
+            <span className="rounded-xl bg-amber-100 p-2.5 text-amber-800">
+              <Wallet aria-hidden="true" className="h-5 w-5" />
+            </span>
+            <div>
+              <h2 className="text-lg font-bold text-amber-950">Costos operativos reales</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Registra los importes mensuales de facturas o reportes. Se mantienen separados del
+                ahorro PAC, que es una proyección del modelo.
+              </p>
+            </div>
           </div>
 
-          <form onSubmit={saveCosts} className="space-y-4 rounded-lg border p-4">
+          <form
+            onSubmit={saveCosts}
+            className="space-y-4 rounded-xl border border-amber-200 bg-white/80 p-4 shadow-sm"
+          >
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
               <label className="space-y-1 text-sm font-medium">
                 Periodo
@@ -560,7 +599,7 @@ export function CostosScreen() {
                   required
                   value={costPeriod}
                   onChange={(event) => chooseCostPeriod(event.target.value)}
-                  className="w-full rounded-md border bg-background px-3 py-2"
+                  className="w-full rounded-md border border-amber-200 bg-background px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
                 />
               </label>
               <label className="space-y-1 text-sm font-medium">
@@ -572,7 +611,7 @@ export function CostosScreen() {
                   required
                   value={energyCost}
                   onChange={(event) => setEnergyCost(event.target.value)}
-                  className="w-full rounded-md border bg-background px-3 py-2"
+                  className="w-full rounded-md border border-amber-200 bg-background px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
                   placeholder="Importe mensual"
                 />
               </label>
@@ -585,7 +624,7 @@ export function CostosScreen() {
                   required
                   value={sludgeCost}
                   onChange={(event) => setSludgeCost(event.target.value)}
-                  className="w-full rounded-md border bg-background px-3 py-2"
+                  className="w-full rounded-md border border-amber-200 bg-background px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
                   placeholder="Importe mensual"
                 />
               </label>
@@ -598,7 +637,7 @@ export function CostosScreen() {
                   required
                   value={membraneCost}
                   onChange={(event) => setMembraneCost(event.target.value)}
-                  className="w-full rounded-md border bg-background px-3 py-2"
+                  className="w-full rounded-md border border-amber-200 bg-background px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
                   placeholder="Importe mensual"
                 />
               </label>
@@ -611,11 +650,15 @@ export function CostosScreen() {
                   maxLength={500}
                   value={costSourceNote}
                   onChange={(event) => setCostSourceNote(event.target.value)}
-                  className="w-full rounded-md border bg-background px-3 py-2"
+                  className="w-full rounded-md border border-amber-200 bg-background px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
                   placeholder="Ej. folio de factura o reporte mensual"
                 />
               </label>
-              <Button type="submit" disabled={savingCosts}>
+              <Button
+                type="submit"
+                disabled={savingCosts}
+                className="bg-amber-700 text-white hover:bg-amber-800"
+              >
                 {savingCosts ? "Guardando…" : "Guardar costos del periodo"}
               </Button>
             </div>
@@ -644,7 +687,7 @@ export function CostosScreen() {
 
           {costChartData.length > 0 && (
             <div className="grid gap-5 xl:grid-cols-[1.3fr_0.7fr]">
-              <article className="space-y-3 rounded-lg border p-4">
+              <article className="space-y-3 rounded-xl border border-blue-200 bg-blue-50/40 p-4 shadow-sm">
                 <div>
                   <h3 className="font-semibold">Costos mensuales registrados</h3>
                   <p className="text-xs text-muted-foreground">
@@ -670,8 +713,8 @@ export function CostosScreen() {
                 </ResponsiveContainer>
               </article>
 
-              <article className="space-y-3 rounded-lg border p-4">
-                <h3 className="font-semibold">Detalle por periodo</h3>
+              <article className="space-y-3 rounded-xl border border-indigo-200 bg-indigo-50/40 p-4 shadow-sm">
+                <h3 className="font-semibold text-indigo-950">Detalle por periodo</h3>
                 <ul className="max-h-80 space-y-3 overflow-y-auto">
                   {[...(operationalCosts.data?.data ?? [])].map((record) => {
                     const total =

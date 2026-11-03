@@ -1,0 +1,4 @@
+plantcode,shiftcode,timestamp,inflowratem3h,inflowturbidityntu,inflowdqomgl,inflowph,pacdoseppm,effluentturbidityntu,effluentdqomgl,effluentph
+PL_NORTE,A,2026-11-03T06:00:00.000Z,144.2,20.1,295.6,7.1,28,1.5,39.8,7.2
+PL_NORTE,D,2026-11-03T14:00:00.000Z,147.5,21.4,308.2,7.0,55,1.7,43.1,7.1
+PL_NORTE,C,fecha-invalida,151.8,19.7,301.2,7.2,27,1.6,40.2,7.3

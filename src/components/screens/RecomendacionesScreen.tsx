@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { toast } from "sonner";
+import { BadgeCheck, Beaker, BrainCircuit, CircleAlert, History, Sparkles } from "lucide-react";
 import { ScadaShell } from "./ScadaShell";
 import { Button } from "@/components/ui/button";
 import { useApiData } from "@/hooks/use-api-data";
@@ -33,6 +34,13 @@ const money = (value: number) =>
     maximumFractionDigits: 2,
   }).format(value);
 const createdAt = (value: string) => new Date(value).toLocaleString("es-MX");
+
+function recommendationStatusTone(status: RecommendationRecord["status"]) {
+  if (status === "APROBADA") return "bg-emerald-50 text-emerald-800 ring-emerald-200";
+  if (status === "PENDIENTE") return "bg-amber-50 text-amber-800 ring-amber-200";
+  if (status === "RECHAZADA") return "bg-rose-50 text-rose-800 ring-rose-200";
+  return "bg-slate-100 text-slate-700 ring-slate-200";
+}
 
 export function RecomendacionesScreen() {
   const plant = useAppContext((state) => state.plant);
@@ -177,16 +185,32 @@ export function RecomendacionesScreen() {
   return (
     <ScadaShell>
       <main className="min-h-screen space-y-6 px-8 pb-16 pt-24">
-        <header className="flex flex-wrap items-end justify-between gap-3 border-b border-scada-ink-26 pb-4">
-          <div>
-            <h1 className="text-2xl font-bold text-scada-ink-33">Recomendaciones IA</h1>
-            <p className="mt-1 text-sm text-scada-ink-35">
-              Un modelo estima la dosis sugerida; la persona operadora decide si aprobarla.
-            </p>
+        <header className="relative overflow-hidden rounded-2xl border border-violet-200 bg-gradient-to-br from-violet-50 via-background to-sky-50 p-6 shadow-sm">
+          <div className="pointer-events-none absolute -right-8 -top-12 h-48 w-48 rounded-full bg-violet-300/20 blur-3xl" />
+          <div className="relative flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <span className="rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-700 p-3 text-white shadow-lg shadow-violet-900/20">
+                <BrainCircuit aria-hidden="true" className="h-7 w-7" />
+              </span>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-violet-800">
+                  Asistencia a la operación
+                </p>
+                <h1 className="text-2xl font-bold text-scada-ink-33">Recomendaciones IA</h1>
+                <p className="mt-1 text-sm text-scada-ink-35">
+                  Un modelo estima la dosis sugerida; la persona operadora decide si aprobarla.
+                </p>
+              </div>
+            </div>
+            <span
+              className={`inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs font-bold ring-1 ring-inset ${isLive ? "bg-emerald-50 text-emerald-800 ring-emerald-200" : "bg-amber-50 text-amber-800 ring-amber-200"}`}
+            >
+              <span
+                className={`h-2 w-2 rounded-full ${isLive ? "bg-emerald-500" : "bg-amber-500"}`}
+              />
+              {isLive ? "Simulación conectada" : "Sin telemetría en vivo"}
+            </span>
           </div>
-          <span className="rounded-full border px-3 py-1 text-xs font-bold">
-            {isLive ? "Simulación conectada" : "Sin telemetría en vivo"}
-          </span>
         </header>
 
         {history.error && (
@@ -206,24 +230,41 @@ export function RecomendacionesScreen() {
           </p>
         )}
         <section className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
-          <article className="space-y-5 rounded-xl border bg-background p-6 shadow-sm">
+          <article className="space-y-5 rounded-xl border border-violet-200 bg-gradient-to-br from-background via-background to-violet-50/60 p-6 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="text-xs font-semibold uppercase text-primary">
-                  Modelo de estimación PAC
-                </p>
-                <h2 className="mt-1 text-xl font-bold">Optimización de dosificación PAC</h2>
+              <div className="flex items-center gap-3">
+                <span className="rounded-xl bg-violet-100 p-2.5 text-violet-700">
+                  <Sparkles aria-hidden="true" className="h-5 w-5" />
+                </span>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-violet-800">
+                    Modelo de estimación PAC
+                  </p>
+                  <h2 className="mt-1 text-xl font-bold text-violet-950">
+                    Optimización de dosificación PAC
+                  </h2>
+                </div>
               </div>
-              <Button onClick={generate} disabled={optimizing}>
+              <Button
+                onClick={generate}
+                disabled={optimizing}
+                className="bg-violet-700 text-white shadow-sm hover:bg-violet-800"
+              >
+                <Sparkles aria-hidden="true" className="mr-2 h-4 w-4" />
                 {optimizing ? "Calculando…" : "Calcular con telemetría actual"}
               </Button>
             </div>
             {history.loading && <p role="status">Cargando recomendaciones…</p>}
             {dose === null ? (
-              <p className="rounded-lg bg-muted/50 p-5 text-sm text-muted-foreground">
-                No hay recomendación pendiente. Calcula una usando la telemetría recibida, o
-                consulta el historial guardado.
-              </p>
+              <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-violet-200 bg-violet-50/60 p-7 text-center">
+                <Beaker aria-hidden="true" className="h-8 w-8 text-violet-500" />
+                <p className="text-sm font-semibold text-violet-950">
+                  No hay recomendación pendiente.
+                </p>
+                <p className="max-w-md text-sm text-muted-foreground">
+                  Calcula una con la telemetría recibida o consulta el historial guardado.
+                </p>
+              </div>
             ) : (
               <>
                 <div className="grid gap-3 sm:grid-cols-3">
@@ -248,24 +289,32 @@ export function RecomendacionesScreen() {
                   />
                 </div>
                 {generated?.result.reasoning && (
-                  <p className="rounded-lg bg-muted/50 p-4 text-sm">{generated.result.reasoning}</p>
+                  <p className="rounded-xl border border-sky-200 bg-sky-50 p-4 text-sm leading-relaxed text-sky-950">
+                    {generated.result.reasoning}
+                  </p>
                 )}
-                <div className="space-y-1 text-sm">
-                  <p>
-                    Predicción NOM-001:{" "}
-                    <strong>
-                      {compliant === null ? "sin datos" : compliant ? "cumple" : "no cumple"}
-                    </strong>
-                  </p>
-                  <p>
-                    Estado de la recomendación:{" "}
-                    <strong>{status ?? (generated?.persisted ? "PENDIENTE" : "Temporal")}</strong>
-                  </p>
+                <div className="flex flex-wrap gap-2 text-xs font-semibold">
+                  <span
+                    className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 ring-1 ring-inset ${compliant === null ? "bg-slate-50 text-slate-700 ring-slate-200" : compliant ? "bg-emerald-50 text-emerald-800 ring-emerald-200" : "bg-rose-50 text-rose-800 ring-rose-200"}`}
+                  >
+                    {compliant === null ? (
+                      <Sparkles className="h-4 w-4" />
+                    ) : compliant ? (
+                      <BadgeCheck className="h-4 w-4" />
+                    ) : (
+                      <CircleAlert className="h-4 w-4" />
+                    )}
+                    Predicción:{" "}
+                    {compliant === null ? "sin datos" : compliant ? "cumple" : "no cumple"}
+                  </span>
+                  <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1.5 text-slate-700 ring-1 ring-inset ring-slate-200">
+                    Estado: {status ?? (generated?.persisted ? "PENDIENTE" : "Temporal")}
+                  </span>
                   {pending && (
-                    <p className="text-xs text-muted-foreground">
+                    <span className="inline-flex items-center rounded-full bg-blue-50 px-3 py-1.5 text-blue-800 ring-1 ring-inset ring-blue-200">
                       Creada: {createdAt(pending.createdAt)} · Confianza estimada:{" "}
                       {pending.modelConfidencePct}%
-                    </p>
+                    </span>
                   )}
                 </div>
                 <div className="flex flex-wrap gap-2 border-t pt-4">
@@ -297,7 +346,7 @@ export function RecomendacionesScreen() {
                   )}
                 </div>
                 {!doseCheck.ok && dose !== null && (
-                  <p className="text-sm text-destructive">
+                  <p className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-900">
                     {doseCheck.reason}
                     {(dose < SAFE_DOSE_MIN || dose > SAFE_DOSE_MAX) && (
                       <>
@@ -309,7 +358,7 @@ export function RecomendacionesScreen() {
                   </p>
                 )}
                 {generated && !generated.persisted && (
-                  <p className="text-sm text-amber-700">
+                  <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
                     El resultado no quedó guardado y no se puede aprobar.
                   </p>
                 )}
@@ -317,24 +366,40 @@ export function RecomendacionesScreen() {
             )}
           </article>
 
-          <article className="space-y-3 rounded-xl border bg-background p-6">
-            <h2 className="text-lg font-bold">Historial de recomendaciones</h2>
+          <article className="space-y-3 rounded-xl border border-blue-200 bg-gradient-to-br from-background via-background to-blue-50/60 p-6 shadow-sm">
+            <div className="flex items-center gap-2">
+              <span className="rounded-lg bg-blue-100 p-2 text-blue-700">
+                <History aria-hidden="true" className="h-4 w-4" />
+              </span>
+              <h2 className="text-lg font-bold text-blue-950">Historial de recomendaciones</h2>
+            </div>
             {(history.data?.data ?? []).length === 0 && !history.loading && (
-              <p className="text-sm text-muted-foreground">Sin recomendaciones almacenadas.</p>
+              <p className="rounded-xl border border-dashed border-blue-200 bg-blue-50/60 p-5 text-center text-sm text-blue-900">
+                Aún no hay recomendaciones en el historial.
+              </p>
             )}
             <ul className="space-y-2">
               {history.data?.data.map((record) => (
-                <li key={record.recommendationId} className="rounded-lg border p-3 text-sm">
+                <li
+                  key={record.recommendationId}
+                  className="rounded-xl border border-blue-100 bg-white/80 p-3 text-sm shadow-sm"
+                >
                   <div className="flex justify-between gap-2">
-                    <strong>{record.recommendedValue.toFixed(2)} ppm · Dosis PAC</strong>
-                    <span>{record.status}</span>
+                    <strong className="text-slate-900">
+                      {record.recommendedValue.toFixed(2)} ppm · Dosis PAC
+                    </strong>
+                    <span
+                      className={`inline-flex h-fit rounded-full px-2.5 py-1 text-[10px] font-bold ring-1 ring-inset ${recommendationStatusTone(record.status)}`}
+                    >
+                      {record.status}
+                    </span>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {createdAt(record.createdAt)}
                   </p>
                   {record.status === "APROBADA" && (
                     <Button
-                      className="mt-2"
+                      className="mt-2 border-amber-300 text-amber-800 hover:bg-amber-50"
                       size="sm"
                       variant="outline"
                       disabled={decisionBusy}
@@ -349,8 +414,11 @@ export function RecomendacionesScreen() {
           </article>
         </section>
 
-        <section className="rounded-xl border bg-muted/30 p-5 text-sm text-muted-foreground">
-          Las recomendaciones aprobadas solo afectan a la simulación; no controlan equipos reales.
+        <section className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 shadow-sm">
+          <CircleAlert aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
+          <p>
+            Las recomendaciones aprobadas solo afectan a la simulación; no controlan equipos reales.
+          </p>
         </section>
 
         <AlertDialog open={confirming} onOpenChange={setConfirming}>
@@ -381,9 +449,18 @@ export function RecomendacionesScreen() {
 }
 
 function Metric({ label, value }: { label: string; value: string }) {
+  const styles: Record<string, string> = {
+    "Dosis actual": "border-blue-200 bg-blue-50/70 text-blue-950",
+    "Dosis sugerida": "border-violet-200 bg-violet-50/70 text-violet-950",
+    "Ahorro PAC estimado": "border-emerald-200 bg-emerald-50/70 text-emerald-950",
+    "Turbidez proyectada": "border-sky-200 bg-sky-50/70 text-sky-950",
+    "DQO proyectada": "border-amber-200 bg-amber-50/70 text-amber-950",
+  };
   return (
-    <div className="rounded-lg border bg-muted/20 p-4">
-      <p className="text-xs font-semibold uppercase text-muted-foreground">{label}</p>
+    <div
+      className={`rounded-xl border p-4 shadow-sm ${styles[label] ?? "border-slate-200 bg-slate-50 text-slate-950"}`}
+    >
+      <p className="text-xs font-semibold uppercase tracking-wide opacity-75">{label}</p>
       <p className="mt-2 text-xl font-bold tabular-nums">{value}</p>
     </div>
   );

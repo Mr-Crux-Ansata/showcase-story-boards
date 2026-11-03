@@ -10,6 +10,7 @@ Scripts para Microsoft SQL Server 2017 o posterior.
 - `04_seed_demo_excursions.sql`: agrega 12 muestras sintéticas recientes para mostrar estados conformes y fuera de referencia en el tablero. Es opcional e idempotente.
 - `05_add_operational_cost_records.sql`: agrega la tabla de captura mensual de costos en bases ya inicializadas antes de esta funcionalidad.
 - `06_seed_demo_operational_costs.sql`: inserta hasta seis meses de costos sintéticos para probar la gráfica, sin reemplazar periodos existentes.
+- `07_seed_demo_operations_and_handovers.sql`: agrega eventos y cierres sintéticos para probar la bitácora, sin reemplazar cierres existentes; los cierres quedan sin certificar.
 
 ## Inicialización
 
@@ -18,6 +19,7 @@ Scripts para Microsoft SQL Server 2017 o posterior.
 3. Copia `.env.example` a `.env` en la raíz y configura las credenciales y claves localmente. No las guardes en el repositorio.
 4. Opcionalmente, ejecuta `04_seed_demo_excursions.sql` para poblar el tablero con un lote de demostración. No lo uses en una base con datos de operación real.
 5. Ejecuta `06_seed_demo_operational_costs.sql` después de crear la tabla si quieres mostrar el gráfico de costos con datos de ejemplo. Para bases existentes, ejecuta antes `05_add_operational_cost_records.sql`.
+6. Opcionalmente, ejecuta `07_seed_demo_operations_and_handovers.sql` para mostrar eventos y entregas de turno de demostración en la bitácora.
 
 El usuario de aplicación recibe actualmente los roles `db_datareader` y `db_datawriter`. En producción, conviene restringirlos a permisos por tabla o procedimiento según el modelo de despliegue.
 

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { toast } from "sonner";
+import { BellRing, CircleAlert, CircleCheck, Clock3 } from "lucide-react";
 import { ScadaShell } from "./ScadaShell";
 import { Button } from "@/components/ui/button";
 import { useApiData } from "@/hooks/use-api-data";
@@ -8,6 +9,21 @@ import { useAppContext } from "@/lib/app-context-store";
 
 type Filter = "all" | "sobrecosto" | "quimico" | "mantenimiento";
 const timestamp = (value: string) => new Date(value).toLocaleString("es-MX");
+
+function alertSeverityTone(severity: string) {
+  if (severity === "CRITICA" || severity === "ALTA")
+    return "bg-rose-50 text-rose-800 ring-rose-200";
+  if (severity === "MODERADA") return "bg-amber-50 text-amber-800 ring-amber-200";
+  return "bg-sky-50 text-sky-800 ring-sky-200";
+}
+
+function alertStatusPresentation(status: OperationalAlert["status"]) {
+  if (status === "abierta")
+    return { label: "Abierta", tone: "bg-rose-100 text-rose-800", icon: CircleAlert };
+  if (status === "pausada")
+    return { label: "Pausada", tone: "bg-amber-100 text-amber-800", icon: Clock3 };
+  return { label: "Resuelta", tone: "bg-emerald-100 text-emerald-800", icon: CircleCheck };
+}
 
 export function AlertasScreen() {
   const plant = useAppContext((state) => state.plant);
@@ -52,21 +68,36 @@ export function AlertasScreen() {
   return (
     <ScadaShell>
       <main className="min-h-screen space-y-6 px-8 pb-16 pt-24">
-        <header className="flex flex-wrap items-end justify-between gap-3 border-b border-scada-ink-26 pb-4">
-          <div>
-            <h1 className="text-2xl font-bold text-scada-ink-33">
-              Desviaciones operativas y alertas
-            </h1>
-            <p className="mt-1 text-sm text-scada-ink-35">
-              Alertas de {plant}. Puedes pausarlas, resolverlas o volver a abrirlas.
-            </p>
-          </div>
-          <div className="rounded-full bg-muted px-3 py-1 text-sm font-semibold">
-            {openCount} abiertas
+        <header className="relative overflow-hidden rounded-2xl border border-rose-200 bg-gradient-to-br from-rose-50 via-background to-amber-50 p-6 shadow-sm">
+          <div className="pointer-events-none absolute -right-8 -top-12 h-48 w-48 rounded-full bg-rose-300/20 blur-3xl" />
+          <div className="relative flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <span className="rounded-2xl bg-gradient-to-br from-rose-600 to-orange-600 p-3 text-white shadow-lg shadow-rose-900/20">
+                <BellRing aria-hidden="true" className="h-7 w-7" />
+              </span>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-rose-800">
+                  Supervisión de eventos
+                </p>
+                <h1 className="text-2xl font-bold text-scada-ink-33">
+                  Desviaciones operativas y alertas
+                </h1>
+                <p className="mt-1 text-sm text-scada-ink-35">
+                  Alertas de {plant}. Puedes pausarlas, resolverlas o volver a abrirlas.
+                </p>
+              </div>
+            </div>
+            <span className="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-white/80 px-4 py-3 text-sm font-bold text-rose-800 shadow-sm">
+              <CircleAlert aria-hidden="true" className="h-4 w-4" />
+              {openCount} abiertas
+            </span>
           </div>
         </header>
 
-        <div className="flex flex-wrap gap-2" aria-label="Filtrar alertas">
+        <div
+          className="flex flex-wrap gap-2 rounded-xl border border-slate-200 bg-slate-50/80 p-3"
+          aria-label="Filtrar alertas"
+        >
           {(["all", "sobrecosto", "quimico", "mantenimiento"] as const).map((value) => (
             <Button
               key={value}
@@ -90,27 +121,46 @@ export function AlertasScreen() {
           </p>
         )}
         {!loading && !error && visible.length === 0 && (
-          <p className="rounded-lg border p-5 text-sm text-muted-foreground">
-            No hay alertas para este filtro.
-          </p>
+          <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-emerald-200 bg-emerald-50/60 px-4 py-8 text-center">
+            <CircleCheck aria-hidden="true" className="h-8 w-8 text-emerald-500" />
+            <p className="text-sm font-semibold text-emerald-900">
+              No hay alertas para este filtro.
+            </p>
+          </div>
         )}
 
         <section className="grid gap-4 lg:grid-cols-2">
           {visible.map((alert) => (
             <article
               key={alert.alertId}
-              className="space-y-4 rounded-xl border bg-background p-5 shadow-sm"
+              className={`space-y-4 rounded-xl border border-slate-200 border-l-4 bg-background p-5 shadow-sm transition-shadow hover:shadow-md ${alert.status === "abierta" ? "border-l-rose-500" : alert.status === "pausada" ? "border-l-amber-500" : "border-l-emerald-500"}`}
             >
               <header className="flex flex-wrap items-start justify-between gap-2">
                 <div>
-                  <p className="text-xs font-semibold uppercase text-muted-foreground">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     {alert.category}
                   </p>
-                  <h2 className="mt-1 text-lg font-bold">{alert.title}</h2>
+                  <h2 className="mt-1 text-lg font-bold text-slate-900">{alert.title}</h2>
                 </div>
-                <span className="rounded-full border px-2.5 py-1 text-xs font-bold">
-                  {alert.severity} · {alert.status}
-                </span>
+                <div className="flex flex-wrap gap-2">
+                  <span
+                    className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ring-1 ring-inset ${alertSeverityTone(alert.severity)}`}
+                  >
+                    {alert.severity}
+                  </span>
+                  {(() => {
+                    const status = alertStatusPresentation(alert.status);
+                    const StatusIcon = status.icon;
+                    return (
+                      <span
+                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${status.tone}`}
+                      >
+                        <StatusIcon aria-hidden="true" className="h-3.5 w-3.5" />
+                        {status.label}
+                      </span>
+                    );
+                  })()}
+                </div>
               </header>
               <p className="whitespace-pre-wrap text-sm text-muted-foreground">
                 {alert.description}

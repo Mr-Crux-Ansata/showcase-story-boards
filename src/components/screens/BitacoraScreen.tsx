@@ -1,5 +1,14 @@
 import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
+import {
+  Activity,
+  BadgeCheck,
+  ClipboardList,
+  Download,
+  FileClock,
+  FlaskConical,
+  ListFilter,
+} from "lucide-react";
 import { ScadaShell } from "./ScadaShell";
 import { Button } from "@/components/ui/button";
 import { useApiData } from "@/hooks/use-api-data";
@@ -44,6 +53,30 @@ function applicationStatusLabel(status: string) {
     SIMULATED_APPROVAL_REVOKED: "Aprobación retirada en la simulación",
   };
   return labels[status] ?? "Registrado";
+}
+
+function eventKindPresentation(kind: string) {
+  const presentation: Record<string, { label: string; className: string }> = {
+    consigna: { label: "Consigna", className: "bg-violet-100 text-violet-800 ring-violet-200" },
+    alerta: { label: "Alerta", className: "bg-rose-100 text-rose-800 ring-rose-200" },
+    datos: { label: "Datos", className: "bg-sky-100 text-sky-800 ring-sky-200" },
+    turno: { label: "Turno", className: "bg-teal-100 text-teal-800 ring-teal-200" },
+    sistema: { label: "Sistema", className: "bg-slate-100 text-slate-700 ring-slate-200" },
+  };
+  return (
+    presentation[kind] ?? {
+      label: "Evento",
+      className: "bg-muted text-muted-foreground ring-border",
+    }
+  );
+}
+
+function applicationStatusTone(status: string) {
+  if (status === "ACK_OK") return "bg-emerald-50 text-emerald-800 ring-emerald-200";
+  if (status === "APPROVED_NOT_APPLIED") return "bg-violet-50 text-violet-800 ring-violet-200";
+  if (status === "SIMULATED_APPROVAL_REVOKED" || status === "NOT_APPLIED")
+    return "bg-amber-50 text-amber-800 ring-amber-200";
+  return "bg-slate-50 text-slate-700 ring-slate-200";
 }
 
 function handoverStatusLabel(status: string) {
@@ -135,21 +168,65 @@ export function BitacoraScreen() {
   return (
     <ScadaShell>
       <main className="min-h-screen space-y-6 px-8 pb-16 pt-24">
-        <header className="flex flex-wrap items-end justify-between gap-3 border-b border-scada-ink-26 pb-4">
-          <div>
-            <h1 className="text-2xl font-bold text-scada-ink-33">Bitácora de operaciones</h1>
-            <p className="mt-1 text-sm text-scada-ink-35">
-              Eventos y cierres registrados para {plant}.
-            </p>
+        <header className="relative overflow-hidden rounded-2xl border border-cyan-200 bg-gradient-to-br from-cyan-50 via-background to-violet-50 p-6 shadow-sm">
+          <div className="pointer-events-none absolute -right-8 -top-12 h-48 w-48 rounded-full bg-cyan-300/20 blur-3xl" />
+          <div className="relative flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <span className="rounded-2xl bg-gradient-to-br from-cyan-600 to-blue-700 p-3 text-white shadow-lg shadow-cyan-900/20">
+                <ClipboardList aria-hidden="true" className="h-7 w-7" />
+              </span>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-cyan-800">
+                  Registro de operación
+                </p>
+                <h1 className="mt-1 text-2xl font-bold text-scada-ink-33">
+                  Bitácora de operaciones
+                </h1>
+                <p className="mt-1 text-sm text-scada-ink-35">
+                  Eventos y cierres registrados para {plant}.
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              className="border-cyan-300 bg-white/80 text-cyan-900 hover:bg-cyan-100"
+              onClick={() => void exportLog()}
+              disabled={!logs.data || exporting}
+            >
+              <Download aria-hidden="true" className="mr-2 h-4 w-4" />
+              {exporting ? "Exportando…" : "Exportar bitácora CSV"}
+            </Button>
           </div>
-          <Button
-            variant="outline"
-            onClick={() => void exportLog()}
-            disabled={!logs.data || exporting}
-          >
-            {exporting ? "Exportando…" : "Exportar bitácora CSV"}
-          </Button>
         </header>
+
+        <section className="grid gap-3 sm:grid-cols-2" aria-label="Resumen de bitácora">
+          <article className="flex items-center gap-3 rounded-xl border border-blue-200 bg-gradient-to-r from-blue-50 to-background p-4">
+            <span className="rounded-lg bg-blue-100 p-2 text-blue-700">
+              <Activity aria-hidden="true" className="h-5 w-5" />
+            </span>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-blue-800">
+                Eventos registrados
+              </p>
+              <p className="text-2xl font-bold tabular-nums text-blue-950">
+                {logs.data?.total ?? "—"}
+              </p>
+            </div>
+          </article>
+          <article className="flex items-center gap-3 rounded-xl border border-teal-200 bg-gradient-to-r from-teal-50 to-background p-4">
+            <span className="rounded-lg bg-teal-100 p-2 text-teal-700">
+              <FileClock aria-hidden="true" className="h-5 w-5" />
+            </span>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-teal-800">
+                Cierres de turno
+              </p>
+              <p className="text-2xl font-bold tabular-nums text-teal-950">
+                {handovers.data?.total ?? "—"}
+              </p>
+            </div>
+          </article>
+        </section>
 
         {logs.error && (
           <p
@@ -160,15 +237,21 @@ export function BitacoraScreen() {
           </p>
         )}
         {logs.loading && <p role="status">Cargando eventos…</p>}
-        <section className="space-y-4 rounded-xl border bg-background p-5">
+        <section className="space-y-4 rounded-xl border border-blue-200 bg-gradient-to-br from-background via-background to-blue-50/70 p-5 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-lg font-bold">Eventos ({logs.data?.total ?? "—"})</h2>
+            <div className="flex items-center gap-2">
+              <span className="rounded-lg bg-blue-100 p-2 text-blue-700">
+                <Activity aria-hidden="true" className="h-4 w-4" />
+              </span>
+              <h2 className="text-lg font-bold">Eventos ({logs.data?.total ?? "—"})</h2>
+            </div>
             <label className="flex items-center gap-2 text-sm">
-              Tipo
+              <ListFilter aria-hidden="true" className="h-4 w-4 text-blue-700" />
+              <span className="font-medium">Tipo</span>
               <select
                 value={filter}
                 onChange={(event) => setFilter(event.target.value)}
-                className="rounded-md border bg-background px-2 py-1"
+                className="rounded-md border border-blue-200 bg-background px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
               >
                 <option value="all">Todos</option>
                 <option value="consigna">Consignas</option>
@@ -180,24 +263,48 @@ export function BitacoraScreen() {
             </label>
           </div>
           {entries.length === 0 && !logs.loading && (
-            <p className="text-sm text-muted-foreground">No hay eventos para mostrar.</p>
+            <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-blue-200 bg-blue-50/60 px-4 py-8 text-center">
+              <ClipboardList aria-hidden="true" className="h-8 w-8 text-blue-400" />
+              <p className="text-sm font-medium text-blue-900">No hay eventos para mostrar.</p>
+              <p className="text-xs text-muted-foreground">
+                Los eventos de la planta aparecerán aquí.
+              </p>
+            </div>
           )}
-          <ol className="divide-y">
+          <ol className="space-y-3">
             {entries.map((entry) => (
-              <li key={entry.logId} className="grid gap-2 py-3 md:grid-cols-[180px_1fr_auto]">
-                <time className="text-xs text-muted-foreground">
-                  {dateTime(entry.loggedAt)} · Turno {entry.shiftCode}
-                </time>
-                <div>
-                  <h3 className="font-semibold">{entry.title}</h3>
-                  <p className="whitespace-pre-wrap text-sm text-muted-foreground">
+              <li
+                key={entry.logId}
+                className="grid gap-3 rounded-xl border border-slate-200 border-l-4 border-l-blue-500 bg-white/80 p-4 shadow-sm transition-shadow hover:shadow-md md:grid-cols-[190px_1fr_auto]"
+              >
+                <div className="space-y-2">
+                  <time className="block text-xs font-medium text-slate-600">
+                    {dateTime(entry.loggedAt)}
+                  </time>
+                  <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-700">
+                    Turno {entry.shiftCode}
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="font-semibold text-slate-900">{entry.title}</h3>
+                    <span
+                      className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ring-1 ring-inset ${eventKindPresentation(entry.eventKind).className}`}
+                    >
+                      {eventKindPresentation(entry.eventKind).label}
+                    </span>
+                  </div>
+                  <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-600">
                     {entry.detail}
                   </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
+                  <p className="text-xs text-slate-500">
                     {entry.operatorName} · {entry.operatorRole}
                   </p>
                 </div>
-                <span className="text-xs text-muted-foreground">
+                <span
+                  className={`inline-flex h-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${applicationStatusTone(entry.plcAckStatus)}`}
+                >
+                  <BadgeCheck aria-hidden="true" className="h-3.5 w-3.5" />
                   {applicationStatusLabel(entry.plcAckStatus)}
                 </span>
               </li>
@@ -206,12 +313,20 @@ export function BitacoraScreen() {
         </section>
 
         <section className="grid gap-5 xl:grid-cols-2">
-          <form onSubmit={signHandover} className="space-y-4 rounded-xl border bg-background p-5">
-            <div>
-              <h2 className="text-lg font-bold">Registrar entrega de turno</h2>
-              <p className="text-sm text-muted-foreground">
-                Ingresa los valores medidos al cierre del turno.
-              </p>
+          <form
+            onSubmit={signHandover}
+            className="space-y-4 rounded-xl border border-violet-200 bg-gradient-to-br from-violet-50/80 via-background to-background p-5 shadow-sm"
+          >
+            <div className="flex items-start gap-3">
+              <span className="rounded-xl bg-violet-100 p-2.5 text-violet-700">
+                <FlaskConical aria-hidden="true" className="h-5 w-5" />
+              </span>
+              <div>
+                <h2 className="text-lg font-bold text-violet-950">Registrar entrega de turno</h2>
+                <p className="text-sm text-muted-foreground">
+                  Ingresa los valores medidos al cierre del turno.
+                </p>
+              </div>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="text-sm">
@@ -221,7 +336,7 @@ export function BitacoraScreen() {
                   type="date"
                   value={form.date}
                   onChange={(event) => setForm({ ...form, date: event.target.value })}
-                  className="mt-1 w-full rounded-md border bg-background px-3 py-2"
+                  className="mt-1 w-full rounded-md border border-violet-200 bg-background px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
                 />
               </label>
               <label className="text-sm">
@@ -233,7 +348,7 @@ export function BitacoraScreen() {
                   type="number"
                   value={form.volume}
                   onChange={(event) => setForm({ ...form, volume: event.target.value })}
-                  className="mt-1 w-full rounded-md border bg-background px-3 py-2"
+                  className="mt-1 w-full rounded-md border border-violet-200 bg-background px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
                 />
               </label>
               <label className="text-sm">
@@ -245,7 +360,7 @@ export function BitacoraScreen() {
                   type="number"
                   value={form.flow}
                   onChange={(event) => setForm({ ...form, flow: event.target.value })}
-                  className="mt-1 w-full rounded-md border bg-background px-3 py-2"
+                  className="mt-1 w-full rounded-md border border-violet-200 bg-background px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
                 />
               </label>
               <label className="text-sm">
@@ -257,7 +372,7 @@ export function BitacoraScreen() {
                   type="number"
                   value={form.turbidity}
                   onChange={(event) => setForm({ ...form, turbidity: event.target.value })}
-                  className="mt-1 w-full rounded-md border bg-background px-3 py-2"
+                  className="mt-1 w-full rounded-md border border-violet-200 bg-background px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
                 />
               </label>
               <label className="text-sm">
@@ -269,7 +384,7 @@ export function BitacoraScreen() {
                   type="number"
                   value={form.dqo}
                   onChange={(event) => setForm({ ...form, dqo: event.target.value })}
-                  className="mt-1 w-full rounded-md border bg-background px-3 py-2"
+                  className="mt-1 w-full rounded-md border border-violet-200 bg-background px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
                 />
               </label>
               <label className="text-sm">
@@ -281,7 +396,7 @@ export function BitacoraScreen() {
                   type="number"
                   value={form.sst}
                   onChange={(event) => setForm({ ...form, sst: event.target.value })}
-                  className="mt-1 w-full rounded-md border bg-background px-3 py-2"
+                  className="mt-1 w-full rounded-md border border-violet-200 bg-background px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
                 />
               </label>
               <label className="text-sm sm:col-span-2">
@@ -294,7 +409,7 @@ export function BitacoraScreen() {
                   type="number"
                   value={form.compliance}
                   onChange={(event) => setForm({ ...form, compliance: event.target.value })}
-                  className="mt-1 w-full rounded-md border bg-background px-3 py-2"
+                  className="mt-1 w-full rounded-md border border-violet-200 bg-background px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
                 />
               </label>
             </div>
@@ -303,17 +418,26 @@ export function BitacoraScreen() {
                 {formError}
               </p>
             )}
-            <p className="text-xs text-muted-foreground">
+            <p className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-xs text-violet-900">
               El registro incluye el operador y una marca de integridad. Esta no sustituye una firma
               legal ni verifica la identidad.
             </p>
-            <Button type="submit" disabled={saving}>
+            <Button
+              type="submit"
+              disabled={saving}
+              className="bg-violet-700 text-white hover:bg-violet-800"
+            >
               {saving ? "Guardando…" : "Guardar cierre de turno"}
             </Button>
           </form>
 
-          <div className="space-y-3 rounded-xl border bg-background p-5">
-            <h2 className="text-lg font-bold">Entregas registradas</h2>
+          <div className="space-y-3 rounded-xl border border-teal-200 bg-gradient-to-br from-teal-50/70 via-background to-background p-5 shadow-sm">
+            <div className="flex items-center gap-2">
+              <span className="rounded-lg bg-teal-100 p-2 text-teal-700">
+                <FileClock aria-hidden="true" className="h-4 w-4" />
+              </span>
+              <h2 className="text-lg font-bold text-teal-950">Entregas registradas</h2>
+            </div>
             {handovers.error && (
               <p role="alert" className="text-sm text-destructive">
                 No se pudieron cargar los cierres de turno. Intenta de nuevo más tarde.
@@ -321,15 +445,26 @@ export function BitacoraScreen() {
             )}
             {handovers.loading && <p role="status">Cargando cierres…</p>}
             {!handovers.loading && (handovers.data?.data.length ?? 0) === 0 && (
-              <p className="text-sm text-muted-foreground">No hay cierres registrados.</p>
+              <p className="rounded-xl border border-dashed border-teal-200 bg-teal-50/60 px-4 py-8 text-center text-sm text-teal-900">
+                No hay cierres registrados.
+              </p>
             )}
             {handovers.data?.data.map((handover) => (
-              <article key={handover.handoverId} className="rounded-lg border p-4 text-sm">
+              <article
+                key={handover.handoverId}
+                className="rounded-xl border border-teal-200 bg-white/80 p-4 text-sm shadow-sm"
+              >
                 <div className="flex justify-between gap-2">
                   <strong>
                     {handover.handoverDate} · Turno {handover.shiftCode}
                   </strong>
-                  <span>{handoverStatusLabel(handover.status)}</span>
+                  <span
+                    className={`inline-flex h-fit rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${handover.signedBy === "Demostración AquaSense" ? "bg-amber-50 text-amber-800 ring-amber-200" : "bg-emerald-50 text-emerald-800 ring-emerald-200"}`}
+                  >
+                    {handover.signedBy === "Demostración AquaSense"
+                      ? "Ejemplo"
+                      : handoverStatusLabel(handover.status)}
+                  </span>
                 </div>
                 <p className="mt-1 text-muted-foreground">
                   {handover.volumeTreatedM3} m³ · caudal {handover.averageFlowRateM3h} m³/h ·

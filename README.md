@@ -160,7 +160,7 @@ The SQL repositories live in `src/server/db/`: `telemetry-repository.ts`, `recom
 - The local model is `src/server/ai/surrogate-model.ts`; it has no cloud AI dependency. It estimates effluent quality and PAC savings from supplied process conditions and searches only the shared approval dose range.
 - The dashboard calculates statistics from up to 200 latest persisted samples. Its references are 4 NTU turbidity and 60 mg/L DQO, as encoded in the application. They are app reference thresholds and should not be treated as a complete regulatory determination for a real site.
 - PAC savings are model projections. Energy, sludge, and membrane costs are manually transcribed monthly from invoices/reports, stored in USD, and shown separately; they are not derived from telemetry.
-- `03_seed_data.sql`, `04_seed_demo_excursions.sql`, and `06_seed_demo_operational_costs.sql` supply demonstration records. Synthetic demo data must not be presented as plant measurements.
+- `03_seed_data.sql` and `04_seed_demo_excursions.sql`, `06_seed_demo_operational_costs.sql`, and `07_seed_demo_operations_and_handovers.sql` supply demonstration records. Synthetic demo data must not be presented as plant measurements.
 - CSV imports accept complete process snapshots, not isolated individual tags. Batch imports use a SQL transaction; if the batch cannot be saved, the UI reports that no rows were saved.
 
 ## External services and system boundaries
@@ -197,7 +197,7 @@ Keep `.env` local and never commit credentials. Configure:
 | `SIMULATION_PROFILE`                                        | `demo` (default) or `stable`. Demo adds a synthetic quality excursion on each 12th cycle and labels it in gateway logs. |
 | `OPERATOR_NAME`, `OPERATOR_ROLE`                            | Server-side identity attached to audited writes. Both are required for operator actions.                                |
 
-Initialize SQL Server using [database/README.md](database/README.md). For an existing installation missing the costs table, run `database/05_add_operational_cost_records.sql`. Optional demo-only sample scripts are `04_seed_demo_excursions.sql` and `06_seed_demo_operational_costs.sql`; the latter keeps existing plant/month cost entries unchanged.
+Initialize SQL Server using [database/README.md](database/README.md). For an existing installation missing the costs table, run `database/05_add_operational_cost_records.sql`. Optional demo-only seeds include `04_seed_demo_excursions.sql`, `06_seed_demo_operational_costs.sql`, and `07_seed_demo_operations_and_handovers.sql`. The cost and operations seeds preserve existing cost periods and handover records; sample handovers are left uncertified.
 
 Run the web app and gateway in separate terminals:
 
