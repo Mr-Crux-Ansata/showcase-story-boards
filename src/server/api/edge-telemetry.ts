@@ -2,6 +2,7 @@ import { TelemetryPayloadSchema, type TelemetrySnapshot } from "../../lib/types/
 import { insertTelemetrySnapshot } from "../db/telemetry-repository";
 import { telemetryBus } from "../telemetry-bus";
 import { timingSafeEqual } from "node:crypto";
+import { logServerError } from "../logging";
 
 const EXPECTED_GATEWAY_KEY = process.env["EDGE_GATEWAY_KEY"];
 
@@ -20,14 +21,21 @@ export async function handleEdgeTelemetryRequest(request: Request): Promise<Resp
       headers: { "Content-Type": "application/json" },
     });
   }
-  const providedKey = request.headers.get("x-edge-gateway-key") || request.headers.get("X-Edge-Gateway-Key");
+  if (EXPECTED_GATEWAY_KEY.length < 32) {
+    return new Response(JSON.stringify({ error: "Gateway authentication is misconfigured." }), {
+      status: 503,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+  const providedKey =
+    request.headers.get("x-edge-gateway-key") || request.headers.get("X-Edge-Gateway-Key");
   const provided = Buffer.from(providedKey ?? "");
   const expected = Buffer.from(EXPECTED_GATEWAY_KEY);
   if (provided.length !== expected.length || !timingSafeEqual(provided, expected)) {
-    return new Response(
-      JSON.stringify({ error: "Unauthorized gateway." }),
-      { status: 401, headers: { "Content-Type": "application/json" } },
-    );
+    return new Response(JSON.stringify({ error: "Unauthorized gateway." }), {
+      status: 401,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
   try {
@@ -49,7 +57,7 @@ export async function handleEdgeTelemetryRequest(request: Request): Promise<Resp
 
     // Verificación de integridad y límites normativos NOM-001
     const nom001Compliant = payload.effluentTurbidityNtu < 4.0 && payload.effluentDqoMgL < 60.0;
-    
+
     // Regla de calidad de señal OT (detección de anomalías en sensor)
     let dataQualityFlag: "GOOD" | "BAD" | "UNCERTAIN" | "STUCK" = "GOOD";
     if (payload.inflowPh < 5.0 || payload.inflowPh > 9.5) {
@@ -76,7 +84,9 @@ export async function handleEdgeTelemetryRequest(request: Request): Promise<Resp
     return new Response(
       JSON.stringify({
         ok: true,
-        message: persisted ? "Telemetry packet stored in SQL Server." : "Telemetry packet accepted in temporary in-memory fallback; it was not persisted.",
+        message: persisted
+          ? "Telemetry packet stored in SQL Server."
+          : "Telemetry packet accepted in temporary in-memory fallback; it was not persisted.",
         persisted,
         storage: persisted ? "sql-server" : "memory-fallback",
         snapshotId,
@@ -90,9 +100,15 @@ export async function handleEdgeTelemetryRequest(request: Request): Promise<Resp
       },
     );
   } catch (err) {
-    console.error("[AquaSense API] Error procesando telemetría del Gateway:", err);
+    logServerError("Edge telemetry ingestion failed.", err);
+    const details = err as { code?: unknown; number?: unknown };
     return new Response(
-      JSON.stringify({ error: "Internal server error processing telemetry" }),
+      JSON.stringify({
+        error: "Internal server error processing telemetry.",
+        databaseStatus: "write-error",
+        ...(typeof details.code === "string" ? { databaseErrorCode: details.code } : {}),
+        ...(typeof details.number === "number" ? { databaseErrorNumber: details.number } : {}),
+      }),
       { status: 500, headers: { "Content-Type": "application/json" } },
     );
   }

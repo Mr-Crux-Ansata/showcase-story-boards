@@ -1,37 +1,44 @@
-import { describe, it, expect, beforeEach } from "vitest";
-import { validateDose, parseCsv, CSV_TEMPLATE } from "@/lib/demo-logic";
-import { demo, openAlertCount } from "@/lib/demo-store";
+import { describe, it, expect } from "vitest";
+import { validateDose } from "@/lib/dose-validation";
+import { parseCsv, CSV_TEMPLATE } from "@/lib/csv";
 
-describe("dose safeguard (18–22 ppm)", () => {
-  it("accepts 18 and 22", () => { expect(validateDose(18).ok).toBe(true); expect(validateDose(22).ok).toBe(true); });
-  it("rejects 17 and 23", () => { expect(validateDose(17).ok).toBe(false); expect(validateDose(23).ok).toBe(false); });
-  it("rejects when quality exceeds limits", () => { expect(validateDose(20, false).ok).toBe(false); });
+describe("configured dose safeguard (18–22 ppm)", () => {
+  it("accepts 18 and 22", () => {
+    expect(validateDose(18).ok).toBe(true);
+    expect(validateDose(22).ok).toBe(true);
+  });
+  it("rejects 17 and 23", () => {
+    expect(validateDose(17).ok).toBe(false);
+    expect(validateDose(23).ok).toBe(false);
+  });
+  it("rejects when quality exceeds limits", () => {
+    expect(validateDose(20, false).ok).toBe(false);
+  });
 });
 
 describe("CSV validation", () => {
-  it("accepts the template", () => { const r = parseCsv(CSV_TEMPLATE); expect(r.errors).toEqual([]); expect(r.validRows).toBe(3); });
-  it("reports missing columns", () => { expect(parseCsv("a,b\n1,2").errors[0]?.message).toMatch(/Faltan columnas/); });
-  it("flags out-of-range and non-numeric values", () => {
-    const r = parseCsv("timestamp,sensor_id,parametro,valor,unidad\n2026-01-01,X,ph,15,u\n2026-01-01,X,dqo,abc,u");
-    expect(r.errors.map((e) => e.row)).toEqual([2, 3]);
-    expect(r.validRows).toBe(0);
+  const values = "PL_NORTE,B,2026-01-01T12:00:00Z,120,80,300,7.2,20,2,45,7.1,,,,,";
+  it("accepts a complete telemetry snapshot row", () => {
+    const result = parseCsv(`${CSV_TEMPLATE}\n${values}`);
+    expect(result.errors).toEqual([]);
+    expect(result.validRows).toBe(1);
   });
-});
-
-describe("shared demo state", () => {
-  beforeEach(() => demo.reset());
-  it("resolving an alert lowers the open count and logs it", () => {
-    expect(openAlertCount(demo.get())).toBe(3);
-    demo.setAlert("filtro", "resuelta", "x");
-    expect(openAlertCount(demo.get())).toBe(2);
-    expect(demo.get().log[0]?.kind).toBe("alerta");
+  it("reports missing snapshot columns", () => {
+    expect(parseCsv("plantCode,shiftCode\nPL_NORTE,B").errors[0]?.message).toMatch(
+      /Faltan columnas/,
+    );
   });
-  it("approving a dose closes the PAC alert and undo restores it", () => {
-    const undo = demo.approveDose(19, "x");
-    expect(demo.get().alerts.find((a) => a.id === "pac")?.status).toBe("resuelta");
-    undo();
-    expect(demo.get().alerts.find((a) => a.id === "pac")?.status).toBe("abierta");
-    expect(demo.get().approvedDose).toBeNull();
-    expect(demo.get().log).toEqual([]);
+  it("rejects out-of-range and non-numeric telemetry fields", () => {
+    const result = parseCsv(
+      `${CSV_TEMPLATE}\nPL_NORTE,B,2026-01-01T12:00:00Z,120,80,300,15,20,2,abc,7.1,,,,,`,
+    );
+    expect(result.errors.map((issue) => issue.row)).toEqual([2, 2]);
+    expect(result.validRows).toBe(0);
+  });
+  it("supports quoted numeric values and escaped quotes", () => {
+    expect(parseCsv(`${CSV_TEMPLATE}\n${values.replace(",20,", ',"20",')}`).validRows).toBe(1);
+    const escaped = parseCsv(`${CSV_TEMPLATE}\n${values.replace("PL_NORTE", '"PL_NORTE""x"')}`);
+    expect(escaped.rows).toHaveLength(1);
+    expect(escaped.errors.some((issue) => issue.message.includes("plantCode"))).toBe(true);
   });
 });

@@ -11,7 +11,8 @@ export interface LiveTelemetryState {
 export function useLiveTelemetry(): LiveTelemetryState {
   const [data, setData] = useState<TelemetrySnapshot | null>(null);
   const [isLive, setIsLive] = useState(false);
-  const [gatewayStatus, setGatewayStatus] = useState<LiveTelemetryState["gatewayStatus"]>("WAITING");
+  const [gatewayStatus, setGatewayStatus] =
+    useState<LiveTelemetryState["gatewayStatus"]>("WAITING");
   const [lastReceivedAt, setLastReceivedAt] = useState<string | null>(null);
 
   useEffect(() => {
@@ -28,7 +29,13 @@ export function useLiveTelemetry(): LiveTelemetryState {
             setData(parsed);
             setIsLive(true);
             setGatewayStatus("ONLINE");
-            setLastReceivedAt(new Date().toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", second: "2-digit" }));
+            setLastReceivedAt(
+              new Date().toLocaleTimeString("es-MX", {
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+              }),
+            );
           } catch (err) {
             console.error("Error parseando telemetría viva:", err);
           }

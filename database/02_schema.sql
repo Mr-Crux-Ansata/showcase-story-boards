@@ -1,4 +1,4 @@
--- ============================================================================
+﻿-- ============================================================================
 -- AquaSense AI - Industrial Water SCADA
 -- Script 02: Esquema Relacional de Base de Datos
 -- Motor: Microsoft SQL Server (T-SQL)

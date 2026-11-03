@@ -4,9 +4,15 @@ import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 import { handleEdgeTelemetryRequest } from "./server/api/edge-telemetry";
 import { handleTelemetryStreamRequest } from "./server/api/telemetry-stream";
-import { handleAiOptimizeRequest, handleAiApproveRequest, handleAiExpireRequest } from "./server/api/ai-optimize";
+import {
+  handleAiOptimizeRequest,
+  handleAiApproveRequest,
+  handleAiExpireRequest,
+  handleAiRevokeRequest,
+} from "./server/api/ai-optimize";
 import { handleOperationsApi } from "./server/api/operations";
 import { handleSimulatorControlRequest } from "./server/api/simulator-control";
+import { handleCsvIngestionRequest } from "./server/api/csv-ingestion";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -75,8 +81,14 @@ export default {
       if (url.pathname === "/api/ai/recommendations/expire") {
         return await handleAiExpireRequest(request);
       }
+      if (url.pathname === "/api/ai/recommendations/revoke") {
+        return await handleAiRevokeRequest(request);
+      }
       if (url.pathname === "/api/simulator/pac-setpoint") {
         return await handleSimulatorControlRequest(request);
+      }
+      if (url.pathname === "/api/telemetry/import-csv") {
+        return await handleCsvIngestionRequest(request);
       }
 
       const operationsResponse = await handleOperationsApi(request);

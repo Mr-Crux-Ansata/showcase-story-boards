@@ -1,4 +1,4 @@
--- ============================================================================
+﻿-- ============================================================================
 -- AquaSense AI - Industrial Water SCADA
 -- Script 03: Datos Semilla Iniciales (Seed Data)
 -- ============================================================================
@@ -15,6 +15,19 @@ BEGIN
         ('PL_SUR', N'Planta Sur', N'Efluente Industrial Metalmecánica', 180.00),
         ('PL_ORIENTE', N'Planta Oriente', N'Efluente Químico y Farmacéutico', 220.00);
 END
+
+UPDATE dbo.Plants
+SET PlantName = CASE PlantCode
+        WHEN N'PL_NORTE' THEN N'Planta Norte'
+        WHEN N'PL_SUR' THEN N'Planta Sur'
+        WHEN N'PL_ORIENTE' THEN N'Planta Oriente'
+    END,
+    EffluentType = CASE PlantCode
+        WHEN N'PL_NORTE' THEN N'Efluente Industrial Automotriz'
+        WHEN N'PL_SUR' THEN N'Efluente Industrial Metalmecánica'
+        WHEN N'PL_ORIENTE' THEN N'Efluente Químico y Farmacéutico'
+    END
+WHERE PlantCode IN (N'PL_NORTE', N'PL_SUR', N'PL_ORIENTE');
 GO
 
 -- 2. Insertar Turnos Operativos
@@ -44,6 +57,22 @@ BEGIN
         (@NorteId, N'MBR_OD_01', N'od', N'Oxígeno Disuelto Biorreactor Tren 2', N'mg/L', 1.50, 3.50, N'ns=2;s=MBR.OD01.PV'),
         (@NorteId, N'FILT_DP_02', N'presion', N'Presión Diferencial Filtro Prensa 02', N'bar', 1.00, 5.00, N'ns=2;s=Filt.DPT02.PV');
 END
+
+UPDATE target
+SET Description = seeded.Description,
+    Unit = seeded.Unit
+FROM dbo.ScadaTags AS target
+JOIN (VALUES
+    (N'AFL_CAUDAL_01', N'Caudal de Afluente al Reactor', N'm³/h'),
+    (N'AFL_TURB_01', N'Turbidez de Entrada Agua Cruda', N'NTU'),
+    (N'AFL_DQO_01', N'Demanda Química de Oxígeno Afluente', N'mg/L'),
+    (N'PAC_DOSIS_SP', N'Consigna de Dosificación PAC Reactor 01', N'ppm'),
+    (N'EFL_TURB_02', N'Turbidez en Efluente Clarificado', N'NTU'),
+    (N'EFL_DQO_02', N'DQO en Efluente de Descarga Final', N'mg/L'),
+    (N'MBR_OD_01', N'Oxígeno Disuelto Biorreactor Tren 2', N'mg/L'),
+    (N'FILT_DP_02', N'Presión Diferencial Filtro Prensa 02', N'bar')
+) AS seeded(TagName, Description, Unit) ON target.TagName = seeded.TagName
+WHERE target.PlantId = @NorteId;
 GO
 
 -- 4. Insertar Alertas Operativas Base
@@ -57,9 +86,23 @@ BEGIN
         (@PlantId, N'filtro', N'mantenimiento', N'MODERADA', N'Presión diferencial alta en FILT-DEHYD-02', N'Delta P acumulado de 4.8 bar en telas de filtración. Requiere retrolavado preventivo.', N'abierta'),
         (@PlantId, N'membrana', N'quimico', N'MODERADA', N'Deriva química en membrana', N'Gradiente de permeabilidad sugiere incrustación inorgánica leve.', N'abierta');
 END
+
+UPDATE target
+SET Title = seeded.Title,
+    Description = seeded.Description
+FROM dbo.OperationalAlerts AS target
+JOIN (VALUES
+    (N'pac', N'Sobredosificaci%', N'Sobredosificación PAC en Reactor MBR', N'Dosis actual de 28 ppm supera el requerimiento cinético para la turbidez de afluente (1.8 NTU proyectada).'),
+    (N'filtro', N'Presi%', N'Presión diferencial alta en FILT-DEHYD-02', N'Delta P acumulado de 4.8 bar en telas de filtración. Requiere retrolavado preventivo.'),
+    (N'membrana', N'Deriva%', N'Deriva química en membrana', N'Gradiente de permeabilidad sugiere incrustación inorgánica leve.')
+) AS seeded(AlertCode, TitlePrefix, Title, Description)
+    ON target.AlertCode = seeded.AlertCode AND target.Title LIKE seeded.TitlePrefix
+WHERE target.PlantId = @PlantId;
 GO
 
 -- 5. Insertar Recomendación IA Activa
+DECLARE @PlantId INT = (SELECT PlantId FROM dbo.Plants WHERE PlantCode = 'PL_NORTE');
+
 IF NOT EXISTS (SELECT 1 FROM dbo.AiRecommendations WHERE PlantId = @PlantId)
 BEGIN
     INSERT INTO dbo.AiRecommendations 
@@ -87,5 +130,29 @@ BEGIN
 END
 GO
 
-PRINT 'Datos semilla insertados correctamente en AquaSenseSCADA.';
+UPDATE dbo.AiRecommendations
+SET ProcessUnit = N'Reactor Floculador #01 · Dosificación PAC'
+WHERE PlantId = (SELECT PlantId FROM dbo.Plants WHERE PlantCode = N'PL_NORTE')
+  AND ParameterName = N'PAC_DOSE'
+  AND CurrentValue = 28.00
+  AND RecommendedValue = 19.00
+  AND MonthlySavingUsd = 14820.00
+  AND TotalMonthlySavingUsd = 19340.00;
+GO
+
+DECLARE @SeedPlantId INT = (SELECT PlantId FROM dbo.Plants WHERE PlantCode = 'PL_NORTE');
+
+IF @SeedPlantId IS NULL
+   OR (SELECT COUNT(*) FROM dbo.Shifts WHERE ShiftCode IN ('A', 'B', 'C')) < 3
+   OR (SELECT COUNT(*) FROM dbo.ScadaTags WHERE PlantId = @SeedPlantId) < 8
+   OR (SELECT COUNT(*) FROM dbo.OperationalAlerts WHERE PlantId = @SeedPlantId) < 3
+   OR NOT EXISTS (
+       SELECT 1 FROM dbo.AiRecommendations
+       WHERE PlantId = @SeedPlantId AND ParameterName = 'PAC_DOSE'
+   )
+BEGIN
+    THROW 50010, 'Seed data verification failed; review earlier SQL errors before continuing.', 1;
+END
+
+PRINT 'Datos semilla verificados e insertados correctamente en AquaSenseSCADA.';
 GO

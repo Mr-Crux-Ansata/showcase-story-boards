@@ -1,30 +1,53 @@
-# Showcase Story Boards
+# AquaSense AI
 
-Build this app using the HTML files referenced below. You can hotlink the images referenced in the HTML. The attached images are screenshots of the desired screens. Here are public links to the html of the screens which you should read and use to build the app:
+Aplicación web SCADA de demostración para telemetría, alertas, bitácora, cierres de turno e inferencias PAC. El gateway incluido es un simulador; no existe una integración con PLC, OPC-UA o Modbus.
 
-1. https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBJxEgxzdGl0Y2hfZmlsZXMaYQosc3RpdGNoX2h0bWxfMDAwNjVlYzM5NTRiNjQ0NzA3YzRlNDExYTMzMmFjZmYSCxIHEPue8rLWHhgBkgEjCgpwcm9qZWN0X2lkEhVCEzU2MTA0OTQ4NzAxMzcyMTMzNDU&filename=&opi=89354086
-2. https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBJxEgxzdGl0Y2hfZmlsZXMaYQosc3RpdGNoX2h0bWxfMDAwNjVlYzNiYWI2ZDVmMTAyOGYwOTkzOGYyMzJiOGQSCxIHEPue8rLWHhgBkgEjCgpwcm9qZWN0X2lkEhVCEzU2MTA0OTQ4NzAxMzcyMTMzNDU&filename=&opi=89354086
-3. https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBJxEgxzdGl0Y2hfZmlsZXMaYQosc3RpdGNoX2h0bWxfMDAwNjVlYzNkM2I0MGU3MjAxZWU0MmIzM2MzNzc3OWUSCxIHEPue8rLWHhgBkgEjCgpwcm9qZWN0X2lkEhVCEzU2MTA0OTQ4NzAxMzcyMTMzNDU&filename=&opi=89354086
-4. https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBJ7Eh1hcHBfY29tcGFuaW9uX2dlbmVyYXRlZF9maWxlcxpaCiVodG1sXzAwMDY1ZWQzZGExZjcxYzQwMjA3OWI1ZDAyMzM3MDU0EgsSBxD7nvKy1h4YAZIBIwoKcHJvamVjdF9pZBIVQhM1NjEwNDk0ODcwMTM3MjEzMzQ1&filename=&opi=89354086
-5. https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBJ7Eh1hcHBfY29tcGFuaW9uX2dlbmVyYXRlZF9maWxlcxpaCiVodG1sXzAwMDY1ZWQzZjJmZjkxOGQwMmE5YTM0NWZiMGFiZjJhEgsSBxD7nvKy1h4YAZIBIwoKcHJvamVjdF9pZBIVQhM1NjEwNDk0ODcwMTM3MjEzMzQ1&filename=&opi=89354086
+## Arquitectura
 
-This project was built with [Lovable](https://lovable.dev).
+- `src/routes/` define las páginas con TanStack Router y Start.
+- `src/components/screens/` contiene las cinco vistas operativas: Costos, Alertas, Recomendaciones, Bitácora y Carga CSV.
+- `src/server.ts` monta los endpoints JSON y delega el resto del tráfico al servidor SSR.
+- `src/server/api/` valida solicitudes y coordina persistencia, optimización y el gateway simulado.
+- `src/server/db/` administra el pool de `mssql` y consultas SQL Server parametrizadas.
+- `database/` contiene el aprovisionamiento, esquema y datos semilla.
+- `scripts/edge-gateway-simulator.ts` genera paquetes de prueba y consulta el setpoint PAC aprobado.
 
-## Build with Lovable
+El optimizador surrogate corre en el servidor. La confirmación humana se guarda en `AiRecommendations` y `OperationsLog`; el simulador lee la última dosis aprobada y la refleja en sus paquetes siguientes. Esto no representa una escritura ni un ACK de PLC.
 
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/8a532cfa-ece2-48d0-a694-14e467cdabc1).
+## Requisitos y ejecución local
 
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
+Usa Node.js 22.12 o posterior y npm.
 
-## Development
+```powershell
+npm ci
+Copy-Item .env.example .env
+```
 
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+Completa `.env` localmente. Para persistencia SQL configura `DB_SERVER`, `DB_PORT`, `DB_NAME`, `DB_USER` y `DB_PASSWORD`. Para usar el simulador, define además `EDGE_GATEWAY_KEY` y `PAC_INITIAL_SETPOINT`; configura `OPERATOR_NAME` y `OPERATOR_ROLE` para registrar decisiones y entregas.
 
-```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
+Inicializa SQL Server siguiendo [database/README.md](database/README.md), luego arranca la aplicación:
+
+```powershell
 npm run dev
+```
+
+En otra terminal ejecuta el gateway simulado:
+
+```powershell
+npm run gateway:simulate
+```
+
+La persistencia no está disponible sin credenciales válidas y SQL Server accesible. El flujo en memoria se limita a telemetría en vivo para desarrollo; las APIs de consulta y escritura persistente responden con error de servicio en lugar de fingir guardado.
+
+## CSV
+
+La importación acepta filas que representan snapshots completos de `TelemetrySnapshots`. Descarga la plantilla desde Carga CSV y proporciona los campos obligatorios de afluente, dosis y efluente. Las filas válidas se insertan en una transacción; las inválidas se reportan con su número de fila. No se inventan valores para convertir lecturas aisladas en snapshots.
+
+## Comprobaciones
+
+```powershell
+npm test
+npm run lint
+npx tsc --noEmit
+npm run build
 ```
